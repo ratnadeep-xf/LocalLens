@@ -9,13 +9,13 @@ export const ArticleProvider = ({ children }) => {
     Array.isArray(demoArticles) ? demoArticles : []
   );
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [regionOptions, setregionOptions] = useState([]);
+  const [regionAvailable, setregionAvailable] = useState([]);
   const [selectedRegion, setSelectedRegion] = useState(["all"]);
   const [publisherArray, setpublisherArray] = useState(demoPublishers);
   const [userArray, setuserArray] = useState(demoUsers);
 
   useEffect(() => {
-    // Extract unique regions from articles in regionOptions
+    // Extract unique regions from articles in regionAvailable
     const uniqueRegions = [
       ...new Set(articles.map((article) => article.region)),
     ];
@@ -26,14 +26,16 @@ export const ArticleProvider = ({ children }) => {
     }));
 
     initialRegions.unshift({ value: "all", label: "All Regions" });
-    setregionOptions(initialRegions);
+    console.log("Initial Regions:", initialRegions);
+    setregionAvailable(initialRegions);
+    console.log("Updated regionAvailable:", regionAvailable);
   }, [articles]);
 
   const value = {
     articles,
     setArticles,
-    regionOptions,
-    setregionOptions,
+    regionAvailable,
+    setregionAvailable,
     selectedDate,
     setSelectedDate,
     selectedRegion,

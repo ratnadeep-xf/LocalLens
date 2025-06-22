@@ -7,7 +7,7 @@ const UserLogin = () => {
   // Access user array from the article context
   const [userArray, setuserArray] = useContext(articleContext);
   // Access region options from the article context
-  const { regionOptions } = useContext(articleContext);
+  const { regionAvailable } = useContext(articleContext);
 
   // State to manage the current mode (signup or signin)
   const [mode, setMode] = useState("signup");
@@ -119,7 +119,7 @@ const UserLogin = () => {
             render={({ field }) => (
               <Select
                 {...field}
-                options={regionOptions}
+                options={regionAvailable}
                 isMulti
                 placeholder="Select Preferred Regions"
               />

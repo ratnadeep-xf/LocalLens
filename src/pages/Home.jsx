@@ -7,7 +7,7 @@ import Navbar from "../components/Navbar";
 const Home = () => {
   const {
     articles,
-    regionOptions,
+    regionAvailable,
     selectedDate,
     setSelectedDate,
     selectedRegion,
@@ -47,7 +47,7 @@ const Home = () => {
         Discover local news, engage with your community, and stay informed about
         what matters most in your neighborhood
       </div>
-      <Filters />
+      <Filters isDashboard={false} />
       <div className="Popular Articles">
         <h1>Popular Articles</h1>
         {topThree.map((article, index) => {

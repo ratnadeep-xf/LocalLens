@@ -4,13 +4,14 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { articleContext } from "../context/articleContext";
 
-const Filters = () => {
+const Filters = ({ isDashboard = false, publisherId }) => {
   const {
-    regionOptions,
+    regionAvailable,
     selectedDate,
     setSelectedDate,
     selectedRegion,
     setSelectedRegion,
+    publisherArray,
   } = useContext(articleContext);
 
   // Handle region selection change
@@ -26,6 +27,25 @@ const Filters = () => {
       setSelectedRegion(["all"]);
     }
   };
+ 
+  let regionOptions = regionAvailable;
+
+  if (isDashboard) {
+    const publisherRegions =
+      publisherArray.find((publisher) => publisher.id === publisherId)
+        ?.regions || [];
+    regionOptions = publisherRegions.map((region) => ({
+      value: region,
+      label: region.charAt(0).toUpperCase() + region.slice(1),
+    }));
+    regionOptions.unshift({ value: "all", label: "All Regions" })
+  }
+
+  const resetFilters = () => {
+    setSelectedRegion(["all"]); // Reset to "all" regions
+    setSelectedDate(new Date()); // Reset to today's date
+  };
+  
   return (
     <div
       className="flex justify-between items-center bg-gray-100 p-4 rounded shadow-md"
@@ -50,6 +70,7 @@ const Filters = () => {
           calendarClassName="p-2"
         />
       </div>
+      <button onClick={resetFilters}>Reset Filters</button>
     </div>
   );
 };

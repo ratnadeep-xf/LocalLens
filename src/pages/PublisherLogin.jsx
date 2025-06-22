@@ -4,11 +4,11 @@ import { useForm, Controller, useWatch } from "react-hook-form";
 import { articleContext } from "../context/articleContext";
 
 const PublisherLogin = () => {
-  
+
   // Access publisher array from the article context
   const [publisherArray, setpublisherArray] = useContext(articleContext);
   // Access region options from the article context
-  const { regionOptions, setregionOptions } = useContext(articleContext);
+  const { regionAvailable, setregionAvailable } = useContext(articleContext);
 
   // State to manage the current mode (signup or signin)
   const [mode, setMode] = useState("signup");
@@ -35,7 +35,7 @@ const PublisherLogin = () => {
       const newRegion = data.newRegion.trim();
 
       // Avoid duplicates
-      const alreadyExists = regionOptions.some(
+      const alreadyExists = regionAvailable.some(
         (opt) => opt.value.toLowerCase() === newRegion.toLowerCase()
       );
 
@@ -46,7 +46,7 @@ const PublisherLogin = () => {
         };
 
         // Add new region to the options list
-        setregionOptions((prev) => [...prev, newOption]);
+        setregionAvailable((prev) => [...prev, newOption]);
       }
     }
 
@@ -78,8 +78,8 @@ const PublisherLogin = () => {
 
   useEffect(() => {
     console.log("Updated Publisher Array:", publisherArray);
-    console.log("Updated regionOptions:", regionOptions)
-  }, [publisherArray, regionOptions]);
+    console.log("Updated regionAvailable:", regionAvailable)
+  }, [publisherArray, regionAvailable]);
 
   return (
     <>
@@ -153,7 +153,7 @@ const PublisherLogin = () => {
               <Select
                 {...field}
                 options={[
-                  ...regionOptions.filter((opt) => opt.value !== "all"),
+                  ...regionAvailable.filter((opt) => opt.value !== "all"),
                   { value: "other", label: "Other" },
                 ]}
                 isMulti

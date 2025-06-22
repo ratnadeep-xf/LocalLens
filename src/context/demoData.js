@@ -10,7 +10,7 @@ export const demoArticles = [
     img: "/img1.png",
     title: "Local Tech Startup Raises $2M in Series A Funding",
     region: "North Region",
-    date: formattedDate, 
+    date: formattedDate,
     publisher: "Tech Times Daily",
     content:
       "A promising local technology startup has successfully secured $2 million...",
@@ -374,32 +374,36 @@ export const demoArticles = [
 ];
 
 export const demoPublishers = [
-    {
-      agencyName: "Ropar Times",
-      email: "editor@ropartimes.com",
-      password: "hashed_password_123", // Replace with hashed password in real app
-      regions: ["Ropar", "Chandigarh"],
-      role: "publisher",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      agencyName: "Ludhiana Chronicle",
-      email: "contact@ludhianachronicle.in",
-      password: "hashed_password_456",
-      regions: ["Ludhiana"],
-      role: "publisher",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      agencyName: "Jalandhar Gazette",
-      email: "admin@jalandhargazette.com",
-      password: "hashed_password_789",
-      regions: ["Jalandhar", "Hoshiarpur"],
-      role: "publisher",
-      createdAt: new Date().toISOString(),
-    },
-  ];
-  export const demoUsers = [
+  {
+    id: 1,
+    agencyName: "Tech Times Daily",
+    email: "editor@techtimesdaily.com",
+    password: "hashed_password_001", // placeholder, hash in real app
+    regions: ["North Region", "West Region"], // Articles #1, #3 & #5
+    role: "publisher",
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 2,
+    agencyName: "Eco News Weekly",
+    email: "info@econewsweekly.org",
+    password: "hashed_password_002",
+    regions: ["South Region"], // Articles #2 & #6
+    role: "publisher",
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 3,
+    agencyName: "Innovator's Journal",
+    email: "admin@innovatorsjournal.net",
+    password: "hashed_password_003",
+    regions: ["East Region"], // Article #4
+    role: "publisher",
+    createdAt: new Date().toISOString(),
+  },
+];
+
+export const demoUsers = [
   {
     userId: 101,
     name: "Aarav Mehta",
@@ -407,7 +411,7 @@ export const demoPublishers = [
     passwordHash: "hashed_password_101",
     preferredRegions: ["North Region", "East Region"],
     role: "reader",
-    createdAt: "2025-06-18T10:00:00Z"
+    createdAt: "2025-06-18T10:00:00Z",
   },
   {
     userId: 102,
@@ -416,7 +420,7 @@ export const demoPublishers = [
     passwordHash: "hashed_password_102",
     preferredRegions: ["South Region"],
     role: "reader",
-    createdAt: "2025-06-16T09:30:00Z"
+    createdAt: "2025-06-16T09:30:00Z",
   },
   {
     userId: 103,
@@ -425,7 +429,7 @@ export const demoPublishers = [
     passwordHash: "hashed_password_103",
     preferredRegions: ["North Region", "South Region"],
     role: "reader",
-    createdAt: "2025-06-15T08:45:00Z"
+    createdAt: "2025-06-15T08:45:00Z",
   },
   {
     userId: 104,
@@ -434,7 +438,7 @@ export const demoPublishers = [
     passwordHash: "hashed_password_104",
     preferredRegions: ["East Region", "West Region"],
     role: "reader",
-    createdAt: "2025-06-14T11:20:00Z"
+    createdAt: "2025-06-14T11:20:00Z",
   },
   {
     userId: 105,
@@ -443,7 +447,7 @@ export const demoPublishers = [
     passwordHash: "hashed_password_105",
     preferredRegions: ["West Region"],
     role: "reader",
-    createdAt: "2025-06-13T13:00:00Z"
+    createdAt: "2025-06-13T13:00:00Z",
   },
   {
     userId: 106,
@@ -452,7 +456,7 @@ export const demoPublishers = [
     passwordHash: "hashed_password_106",
     preferredRegions: ["South Region", "West Region"],
     role: "reader",
-    createdAt: "2025-06-12T15:45:00Z"
+    createdAt: "2025-06-12T15:45:00Z",
   },
   {
     userId: 107,
@@ -461,7 +465,7 @@ export const demoPublishers = [
     passwordHash: "hashed_password_107",
     preferredRegions: ["East Region"],
     role: "reader",
-    createdAt: "2025-06-11T17:10:00Z"
+    createdAt: "2025-06-11T17:10:00Z",
   },
   {
     userId: 108,
@@ -470,6 +474,6 @@ export const demoPublishers = [
     passwordHash: "hashed_password_108",
     preferredRegions: ["North Region", "South Region"],
     role: "reader",
-    createdAt: "2025-06-10T18:30:00Z"
-  }
+    createdAt: "2025-06-10T18:30:00Z",
+  },
 ];
