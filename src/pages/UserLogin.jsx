@@ -4,12 +4,8 @@ import { useForm, Controller } from "react-hook-form";
 import { articleContext } from "../context/articleContext";
 
 const UserLogin = () => {
-  // State to manage user data
-  // This is a mock user array, in a real application this would be fetched from a database
-  const [userArray, setuserArray] = useState([
-    { name: "John Doe", email: "xfactor1289@gmail.com", password: "12345", preferredRegions: [] }
-  ]);
-
+  // Access user array from the article context
+  const [userArray, setuserArray] = useContext(articleContext);
   // Access region options from the article context
   const { regionOptions } = useContext(articleContext);
 

@@ -21,7 +21,7 @@ function App() {
             <Route path="/publisher-login" element={<PublisherLogin />} />
             <Route path="/add-article" element={<AddArticle />} />
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/article" element={<ArticlePage />} />
+            <Route path="/article/:id" element={<ArticlePage />} />
           </Routes>
         </main>
       </ArticleProvider>

@@ -4,36 +4,9 @@ import { useForm, Controller, useWatch } from "react-hook-form";
 import { articleContext } from "../context/articleContext";
 
 const PublisherLogin = () => {
-  // This is a mock user array, in a real application this would be fetched from a database
-  const demoPublishers = [
-    {
-      agencyName: "Ropar Times",
-      email: "editor@ropartimes.com",
-      password: "hashed_password_123", // Replace with hashed password in real app
-      regions: ["Ropar", "Chandigarh"],
-      role: "publisher",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      agencyName: "Ludhiana Chronicle",
-      email: "contact@ludhianachronicle.in",
-      password: "hashed_password_456",
-      regions: ["Ludhiana"],
-      role: "publisher",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      agencyName: "Jalandhar Gazette",
-      email: "admin@jalandhargazette.com",
-      password: "hashed_password_789",
-      regions: ["Jalandhar", "Hoshiarpur"],
-      role: "publisher",
-      createdAt: new Date().toISOString(),
-    },
-  ];
-  // State to manage user data
-  const [publisherArray, setpublisherArray] = useState(demoPublishers);
-
+  
+  // Access publisher array from the article context
+  const [publisherArray, setpublisherArray] = useContext(articleContext);
   // Access region options from the article context
   const { regionOptions, setregionOptions } = useContext(articleContext);
 
