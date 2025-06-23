@@ -1,14 +1,27 @@
-import React from "react";
-import { ArrowUp, ArrowDown, MessageCircle } from "lucide-react";
+import React, { useState, useContext } from "react";
+import { ArrowUp, ArrowDown, MessageCircle, Delete } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+import DeleteModal from "./DeleteModal";
+import { articleContext } from "../context/articleContext";
 
-const ArticleCard = ({ article, isPopular = { value: false, rank: 0 } }) => {
+const ArticleCard = ({
+  article,
+  isPopular = { value: false, rank: 0 },
+  isDashboard = false,
+}) => {
   const navigate = useNavigate();
   const handleClick = () => {
     // Handle click event, e.g., navigate to article details page
     console.log(`Navigating to article: ${article.title}`);
     navigate(`/article/${article.id}`, { state: { article } });
   };
+
+  const { modal, setmodal } = useContext(articleContext);
+  const togglemodal = () => {
+    setmodal(!modal);
+  };
+
   return (
     <div className="w-full max-w-lg mx-auto">
       <div
@@ -35,6 +48,19 @@ const ArticleCard = ({ article, isPopular = { value: false, rank: 0 } }) => {
               #{isPopular.rank} Popular
             </div>
           )}
+          {/* Delete Button for Dashboard */}
+          {isDashboard && (
+            <button
+              className="inline-flex items-center px-3 py-1 rounded-full bg-red-500 text-white text-sm font-medium mb-4"
+              onClick={(e) => {
+                e.stopPropagation();
+                togglemodal();
+              }}
+            >
+              Delete
+            </button>
+          )}
+          {modal && <DeleteModal />}
           <h2 className="text-white text-xl font-bold leading-tight mb-6">
             {article.title}
           </h2>
@@ -52,11 +78,15 @@ const ArticleCard = ({ article, isPopular = { value: false, rank: 0 } }) => {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1 text-green-600">
               <ArrowUp className="w-4 h-4" />
-              <span className="font-semibold">{article.engagement.upVotes}</span>
+              <span className="font-semibold">
+                {article.engagement.upVotes}
+              </span>
             </div>
             <div className="flex items-center gap-1 text-red-600">
               <ArrowDown className="w-4 h-4" />
-              <span className="font-semibold">{article.engagement.downVotes}</span>
+              <span className="font-semibold">
+                {article.engagement.downVotes}
+              </span>
             </div>
             <div className="flex items-center gap-1 text-blue-600">
               <MessageCircle className="w-4 h-4" />

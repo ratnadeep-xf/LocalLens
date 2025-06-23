@@ -1,7 +1,10 @@
-import React from "react";
+import React, { useContext } from "react";
 import { Link } from "react-router-dom";
+import { articleContext } from "../context/articleContext";
 
 const Navbar = () => {
+  const { isUserLoggedIn, isPublisherLoggedIn } = useContext(articleContext);
+
   return (
     <nav className="flex justify-between items-center p-4 bg-gray-800 text-white">
       <div className="flex items-center gap-6">
@@ -21,14 +24,27 @@ const Navbar = () => {
         </ul>
       </div>
       <div className="loginOptions flex gap-4">
-        <button className="UserLogin">
-          <Link to="/user-login" className="nav-link">
-            User Login
-          </Link>
-        </button>
-        <button className="publisherLogin"><Link to="/publisher-login" className="nav-link">
-            Publisher Login
-          </Link></button>
+        {!isUserLoggedIn && (
+          <button className="UserLogin">
+            <Link to="/user-login" className="nav-link">
+              User Login
+            </Link>
+          </button>
+        )}
+        {!isPublisherLoggedIn && (
+          <button className="publisherLogin">
+            <Link to="/publisher-login" className="nav-link">
+              Publisher Login
+            </Link>
+          </button>
+        )}
+        {isPublisherLoggedIn && (
+          <button className="dashboard button">
+            <Link to="/dashboard" className="nav-link">
+              Dashboard
+            </Link>
+          </button>
+        )}
       </div>
     </nav>
   );

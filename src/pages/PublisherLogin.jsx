@@ -2,13 +2,21 @@ import React, { useState, useContext, useEffect } from "react";
 import Select from "react-select";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { articleContext } from "../context/articleContext";
+import { useNavigate } from "react-router-dom";
+import { set } from "date-fns";
 
 const PublisherLogin = () => {
+  const navigate = useNavigate();
 
-  // Access publisher array from the article context
-  const [publisherArray, setpublisherArray] = useContext(articleContext);
-  // Access region options from the article context
-  const { regionAvailable, setregionAvailable } = useContext(articleContext);
+  // Access region options and publisherArray from the article context
+  const {
+    regionAvailable,
+    setregionAvailable,
+    publisherArray,
+    setpublisherArray,
+    isPublisherLoggedIn,
+    setisPublisherLoggedIn,
+  } = useContext(articleContext);
 
   // State to manage the current mode (signup or signin)
   const [mode, setMode] = useState("signup");
@@ -52,7 +60,22 @@ const PublisherLogin = () => {
 
     console.log("Form Data:", data);
     // Here you can handle the form submission, e.g., send data to an API
-    setpublisherArray((prevUsers) => [...prevUsers, data]);
+    const publisherObj = {
+      id: Date.now(), // or a better unique id
+      agencyName: data.agency_name,
+      email: data.email,
+      password: data.password,
+      contactPerson: data.contact_person_name,
+      phone: data.phone,
+      regions: (data.preferredRegions || []).map((r) =>
+        r.value === "other" ? data.newRegion : r.value
+      ),
+    };
+
+    setpublisherArray((prev) => [...prev, publisherObj]);
+
+    setisPublisherLoggedIn(true); // Set publisher as logged in
+    navigate("/"); // Redirect to home page
   };
 
   // Function to validate user data during sign-in
@@ -63,23 +86,22 @@ const PublisherLogin = () => {
       (publisher) => publisher.email === data.email
     );
     if (userExists) {
-      console.log("User exists, proceed with sign-in");
       if (
         data.password ===
         publisherArray.find((publisher) => publisher.email === data.email)
           .password
-      )
-        console.log("Sign-in successful");
-      else console.log("Incorrect password");
+      ) {
+        setisPublisherLoggedIn(true); // Set publisher as logged in
+        console.log("Validation successful:", data);
+        // Sign-in successful
+        navigate("/"); // Redirect to home page
+      } else {
+        console.log("Incorrect password");
+      }
     } else {
       console.log("User does not exist, please sign up");
     }
   };
-
-  useEffect(() => {
-    console.log("Updated Publisher Array:", publisherArray);
-    console.log("Updated regionAvailable:", regionAvailable)
-  }, [publisherArray, regionAvailable]);
 
   return (
     <>

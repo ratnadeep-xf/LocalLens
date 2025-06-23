@@ -2,12 +2,19 @@ import React, { useState, useEffect, useContext } from "react";
 import Select from "react-select";
 import { useForm, Controller } from "react-hook-form";
 import { articleContext } from "../context/articleContext";
+import { useNavigate } from "react-router-dom";
 
 const UserLogin = () => {
-  // Access user array from the article context
-  const [userArray, setuserArray] = useContext(articleContext);
-  // Access region options from the article context
-  const { regionAvailable } = useContext(articleContext);
+  // Access from the article context
+  const {
+    userArray,
+    setuserArray,
+    regionAvailable,
+    isUserLoggedIn,
+    setisUserLoggedIn,
+  } = useContext(articleContext);
+
+  const navigate = useNavigate();
 
   // State to manage the current mode (signup or signin)
   const [mode, setMode] = useState("signup");
@@ -23,22 +30,34 @@ const UserLogin = () => {
 
   // Function to handle new user data during sign-up
   const newData = (data) => {
-    console.log("Form Data:", data);
-    // Here you can handle the form submission, e.g., send data to an API
-    setuserArray((prevUsers) => [...prevUsers, data]);
+    const userObj = {
+      id: Date.now(), // unique id
+      name: data.name,
+      email: data.email,
+      password: data.password,
+      preferredRegions: (data.preferredRegions || []).map((r) => r.value),
+    };
+
+    setuserArray((prevUsers) => [...prevUsers, userObj]);
+    setisUserLoggedIn(true); // Set user as logged in
+    console.log("New User Data:", userObj);
+    navigate("/"); // Redirect to home
   };
 
   // Function to validate user data during sign-in
   const validateData = (data) => {
-    console.log("Validation Data:", data);
-    // Here you can validate the data, e.g., check if user exists
-    const userExists = userArray.some(  (user) => user.email === data.email);
+    const userExists = userArray.some((user) => user.email === data.email);
     if (userExists) {
-      console.log("User exists, proceed with sign-in");
-      if (data.password === userArray.find(user => user.email === data.email).password) 
-        console.log("Sign-in successful");
-      else
+      if (
+        data.password ===
+        userArray.find((user) => user.email === data.email).password
+      ) {
+        setisUserLoggedIn(userExists); // Set user as logged in if exists
+        console.log("Validation Data:", data);
+        navigate("/"); // Redirect to home
+      } else {
         console.log("Incorrect password");
+      }
     } else {
       console.log("User does not exist, please sign up");
     }

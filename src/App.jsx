@@ -8,6 +8,8 @@ import AddArticle from "./pages/AddArticle";
 import Dashboard from "./pages/Dashboard";
 import ArticlePage from "./pages/ArticlePage";
 import { ArticleProvider } from "./context/articleContext";
+import DeleteModal from "./components/DeleteModal";
+
 function App() {
   const [count, setCount] = useState(0);
 
@@ -22,6 +24,8 @@ function App() {
             <Route path="/add-article" element={<AddArticle />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/article/:id" element={<ArticlePage />} />
+            <Route path="/delete-article" element={<DeleteModal />} />
+            <Route path="*" element={<h1>Page Not Found</h1>} />
           </Routes>
         </main>
       </ArticleProvider>

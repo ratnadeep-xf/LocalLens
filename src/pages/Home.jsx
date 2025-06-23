@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import Filters from "../components/Filters";
 import ArticleCard from "../components/ArticleCard";
 import { articleContext } from "../context/articleContext";
@@ -12,6 +12,7 @@ const Home = () => {
     setSelectedDate,
     selectedRegion,
     setSelectedRegion,
+    popular
   } = useContext(articleContext);
 
   // Function to check if the date string matches the selected date
@@ -24,21 +25,7 @@ const Home = () => {
       d.getFullYear() === selectedDate.getFullYear()
     );
   };
-  // Filter articles to get the top three based on engagement votes for the selected date and region
-
-  const topThree = articles
-    .filter((article) => isSameDate(article.date, selectedDate))
-    .filter((article) => {
-      // If "all" is selected, show all articles
-      if (selectedRegion.includes("all")) {
-        return true;
-      }
-      // Otherwise, show articles matching any selected region
-      return selectedRegion.includes(article.region);
-    })
-    .sort((a, b) => b.engagement.votes - a.engagement.votes)
-    .slice(0, 3);
-
+  
   return (
     <div>
       <Navbar />
@@ -50,7 +37,7 @@ const Home = () => {
       <Filters isDashboard={false} />
       <div className="Popular Articles">
         <h1>Popular Articles</h1>
-        {topThree.map((article, index) => {
+        {popular.map((article, index) => {
           const isPopular = { value: true, rank: index + 1 };
           return (
             <ArticleCard
