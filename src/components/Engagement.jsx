@@ -1,5 +1,5 @@
 import React, { useState, useContext } from "react";
-import { ArrowUp, ArrowDown, MessageCircle, User } from "lucide-react";
+import { ArrowUp, ArrowDown, MessageCircle, User, Send } from "lucide-react";
 import { format } from "date-fns";
 import { articleContext } from "../context/articleContext";
 
@@ -47,11 +47,11 @@ const Engagement = ({ article }) => {
   };
 
   const handleClick = () => {
-    if (newComment) {
+    if (newComment.trim()) {
       const newCommentObj = {
         commentId: Date.now(),
         userId: loggedUserId,
-        content: newComment,
+        content: newComment.trim(),
         createdAt: new Date(),
       };
       setArticles((prevArticles) =>
@@ -74,118 +74,133 @@ const Engagement = ({ article }) => {
   return (
     <div className="space-y-6">
       {/* Voting Section */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h3 className="text-lg font-semibold mb-4">Rate this article</h3>
+      <div className="bg-white rounded-xl shadow-card p-6">
+        <h3 className="text-lg font-semibold text-neutral-900 mb-4">Rate this article</h3>
         {isUserLoggedIn ? (
-          <div className="flex items-center justify-center space-x-4">
-            <button
-              onClick={() => handleVote("up")}
-              className={`flex items-center justify-center w-12 h-12 rounded-full border-2 transition-colors ${
-                userVote === "up"
-                  ? "bg-green-500 border-green-500 text-white"
-                  : "border-green-500 text-green-500 hover:bg-green-50"
-              }`}
-            >
-              <ArrowUp className="h-5 w-5" />
-            </button>
+          <div className="flex items-center justify-center space-x-8">
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">
-                {latestArticle.engagement.upVotes}
+              <button
+                onClick={() => handleVote("up")}
+                className={`flex items-center justify-center w-14 h-14 rounded-full border-2 transition-all duration-200 ${
+                  userVote === "up"
+                    ? "bg-green-500 border-green-500 text-white shadow-lg"
+                    : "border-green-500 text-green-500 hover:bg-green-50 hover:shadow-md"
+                }`}
+              >
+                <ArrowUp className="h-6 w-6" />
+              </button>
+              <div className="mt-2">
+                <div className="text-2xl font-bold text-neutral-900">
+                  {latestArticle.engagement.upVotes}
+                </div>
+                <div className="text-sm text-neutral-500">upvotes</div>
               </div>
-              <div className="text-sm text-gray-500"> upVotes</div>
             </div>
-            <button
-              onClick={() => handleVote("down")}
-              className={`flex items-center justify-center w-12 h-12 rounded-full border-2 transition-colors ${
-                userVote === "down"
-                  ? "bg-red-500 border-red-500 text-white"
-                  : "border-red-500 text-red-500 hover:bg-red-50"
-              }`}
-            >
-              <ArrowDown className="h-5 w-5" />
-            </button>
+            
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">
-                {latestArticle.engagement.downVotes}
+              <button
+                onClick={() => handleVote("down")}
+                className={`flex items-center justify-center w-14 h-14 rounded-full border-2 transition-all duration-200 ${
+                  userVote === "down"
+                    ? "bg-accent-500 border-accent-500 text-white shadow-lg"
+                    : "border-accent-500 text-accent-500 hover:bg-accent-50 hover:shadow-md"
+                }`}
+              >
+                <ArrowDown className="h-6 w-6" />
+              </button>
+              <div className="mt-2">
+                <div className="text-2xl font-bold text-neutral-900">
+                  {latestArticle.engagement.downVotes}
+                </div>
+                <div className="text-sm text-neutral-500">downvotes</div>
               </div>
-              <div className="text-sm text-gray-500"> downVotes</div>
             </div>
           </div>
         ) : (
-          <div className="text-gray-500 text-center">
-            Please log in to vote on this article.
+          <div className="text-center py-8 bg-neutral-50 rounded-lg">
+            <p className="text-neutral-500">Please log in to vote on this article.</p>
           </div>
         )}
       </div>
 
       {/* Comments Section */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <div className="flex items-center space-x-2 mb-4">
-          <MessageCircle className="h-5 w-5 text-blue-600" />
-          <h3 className="text-lg font-semibold">Comments</h3>
-          <span className="text-sm text-gray-500">
-            ({latestArticle.engagement.commentsArray.length})
+      <div className="bg-white rounded-xl shadow-card p-6">
+        <div className="flex items-center space-x-2 mb-6">
+          <MessageCircle className="h-5 w-5 text-primary-600" />
+          <h3 className="text-lg font-semibold text-neutral-900">Comments</h3>
+          <span className="bg-primary-100 text-primary-700 text-sm font-medium px-2 py-1 rounded-full">
+            {latestArticle.engagement.commentsArray.length}
           </span>
         </div>
 
-        <div className="space-y-4">
-          {latestArticle.engagement.commentsArray.map((comment) => (
-            <div
-              key={comment.commentId}
-              className="border-b border-gray-100 pb-4 last:border-b-0"
-            >
-              <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                    <User className="h-4 w-4 text-gray-600" />
+        <div className="space-y-4 mb-6">
+          {latestArticle.engagement.commentsArray.length > 0 ? (
+            latestArticle.engagement.commentsArray.map((comment) => (
+              <div
+                key={comment.commentId}
+                className="border-b border-neutral-100 pb-4 last:border-b-0 last:pb-0"
+              >
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0">
+                    <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
+                      <User className="h-5 w-5 text-primary-600" />
+                    </div>
                   </div>
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <span className="text-sm font-medium text-gray-900">
-                      {(() => {
-                        const user = userArray.find(
-                          (u) => u.userId === comment.userId
-                        );
-                        return user ? user.name : "no user";
-                      })()}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {format(comment.createdAt, "MMM d, h:mm a")}
-                    </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <span className="text-sm font-semibold text-neutral-900">
+                        {(() => {
+                          const user = userArray.find(
+                            (u) => u.userId === comment.userId
+                          );
+                          return user ? user.name : "Anonymous User";
+                        })()}
+                      </span>
+                      <span className="text-xs text-neutral-500">
+                        {format(comment.createdAt, "MMM d, h:mm a")}
+                      </span>
+                    </div>
+                    <p className="text-sm text-neutral-700 leading-relaxed">
+                      {comment.content}
+                    </p>
                   </div>
-                  <p className="text-sm text-gray-700 leading-relaxed">
-                    {comment.content}
-                  </p>
                 </div>
               </div>
+            ))
+          ) : (
+            <div className="text-center py-8 text-neutral-500">
+              No comments yet. Be the first to share your thoughts!
             </div>
-          ))}
+          )}
         </div>
 
         {/* Add Comment Input */}
-        <div className="mt-4 pt-4 border-t border-gray-100">
+        <div className="border-t border-neutral-100 pt-6">
           {isUserLoggedIn ? (
-            <>
+            <div className="space-y-3">
               <textarea
-                placeholder="Add a comment..."
+                placeholder="Share your thoughts on this article..."
                 value={newComment}
-                className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full p-4 border border-neutral-200 rounded-lg resize-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200"
                 rows="3"
                 onChange={(e) => {
                   setnewComment(e.target.value);
                 }}
               />
-              <button
-                className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                onClick={handleClick}
-              >
-                Post Comment
-              </button>
-            </>
+              <div className="flex justify-end">
+                <button
+                  onClick={handleClick}
+                  disabled={!newComment.trim()}
+                  className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:bg-neutral-300 disabled:cursor-not-allowed transition-colors duration-200"
+                >
+                  <Send className="w-4 h-4" />
+                  Post Comment
+                </button>
+              </div>
+            </div>
           ) : (
-            <div className="text-gray-500 text-center">
-              Please log in to add a comment.
+            <div className="text-center py-6 bg-neutral-50 rounded-lg">
+              <p className="text-neutral-500">Please log in to add a comment.</p>
             </div>
           )}
         </div>

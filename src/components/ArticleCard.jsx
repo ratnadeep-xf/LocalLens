@@ -1,5 +1,5 @@
 import React, { useState, useContext } from "react";
-import { ArrowUp, ArrowDown, MessageCircle, Delete } from "lucide-react";
+import { ArrowUp, ArrowDown, MessageCircle, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 import DeleteModal from "./DeleteModal";
@@ -23,72 +23,77 @@ const ArticleCard = ({
   };
 
   return (
-    <div className="w-full max-w-lg mx-auto">
+    <div className="group">
       <div
-        className="relative overflow-hidden rounded-lg bg-slate-800 cursor-pointer transition-transform duration-200 hover:scale-105 hover:shadow-xl"
+        className="relative overflow-hidden rounded-xl bg-white shadow-card hover:shadow-card-hover cursor-pointer transition-all duration-300 hover:-translate-y-1"
         onClick={handleClick}
         role="button"
         tabIndex={0}
       >
         {/* Background Image */}
-        <div
-          className="absolute inset-0 bg-cover bg-center opacity-60"
-          style={{
-            backgroundImage: article.img
-              ? `url(${article.img})`
-              : "url(/default-background.png)",
-          }}
-        />
-        {/* Dark overlay */}
-        <div className="absolute inset-0 bg-slate-900/70" />
-        <div className="relative p-6">
+        <div className="relative h-48 sm:h-56 overflow-hidden">
+          <img
+            src={article.img || "/default-background.png"}
+            alt={article.title}
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+          {/* Dark overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+          
           {/* Popular Badge */}
           {isPopular.value && (
-            <div className="inline-flex items-center px-3 py-1 rounded-full bg-red-500 text-white text-sm font-medium mb-4">
+            <div className="absolute top-4 left-4 inline-flex items-center px-3 py-1 rounded-full bg-accent-500 text-white text-sm font-semibold shadow-lg">
               #{isPopular.rank} Popular
             </div>
           )}
+          
           {/* Delete Button for Dashboard */}
           {isDashboard && (
             <button
-              className="inline-flex items-center px-3 py-1 rounded-full bg-red-500 text-white text-sm font-medium mb-4"
+              className="absolute top-4 right-4 inline-flex items-center justify-center w-10 h-10 rounded-full bg-accent-500 text-white hover:bg-accent-600 transition-colors duration-200 shadow-lg"
               onClick={(e) => {
                 e.stopPropagation();
                 togglemodal();
               }}
             >
-              Delete
+              <Trash2 className="w-4 h-4" />
             </button>
           )}
-          {modal && <DeleteModal />}
-          <h2 className="text-white text-xl font-bold leading-tight mb-6">
-            {article.title}
-          </h2>
+          
+          {/* Title overlay */}
+          <div className="absolute bottom-0 left-0 right-0 p-6">
+            <h2 className="text-white text-xl font-bold leading-tight line-clamp-2">
+              {article.title}
+            </h2>
+          </div>
         </div>
+        
         {/* Bottom Section */}
-        <div className="bg-white px-6 py-4 rounded-b-lg border border-t-0 border-gray-200">
+        <div className="p-4 bg-white">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-gray-600 font-medium">
+            <span className="text-primary-600 font-semibold text-sm">
               {article.publisher}
             </span>
-            <span className="text-gray-500 text-sm">{article.region}</span>
+            <span className="text-neutral-500 text-sm bg-neutral-100 px-2 py-1 rounded-full">
+              {article.region}
+            </span>
           </div>
 
           {/* Engagement Metrics */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 text-sm">
             <div className="flex items-center gap-1 text-green-600">
               <ArrowUp className="w-4 h-4" />
               <span className="font-semibold">
                 {article.engagement.upVotes}
               </span>
             </div>
-            <div className="flex items-center gap-1 text-red-600">
+            <div className="flex items-center gap-1 text-accent-600">
               <ArrowDown className="w-4 h-4" />
               <span className="font-semibold">
                 {article.engagement.downVotes}
               </span>
             </div>
-            <div className="flex items-center gap-1 text-blue-600">
+            <div className="flex items-center gap-1 text-primary-600">
               <MessageCircle className="w-4 h-4" />
               <span className="font-semibold">
                 {article.engagement.comments}
@@ -97,6 +102,7 @@ const ArticleCard = ({
           </div>
         </div>
       </div>
+      {modal && <DeleteModal />}
     </div>
   );
 };
