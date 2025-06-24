@@ -1,10 +1,14 @@
 import React, { useContext } from "react";
 import Navbar from "../components/Navbar";
 import Select from "react-select";
-import { useForm, Controller, useWatch } from "react-hook-form";
+import { useForm, Controller, useWatch  } from "react-hook-form";
 import { articleContext } from "../context/articleContext";
+import { useNavigate } from "react-router-dom";
 
 const AddArticle = () => {
+
+  const navigate = useNavigate();
+
   const { articles, setArticles, regionAvailable, setregionAvailable, loggedPublisher } = useContext(articleContext);
 
   const {
@@ -55,6 +59,7 @@ const AddArticle = () => {
     // Add the new article to articles state
     setArticles(prev => [newArticle, ...prev]);
     console.log("Updated Articles" + articles);
+    navigate("/"); // Redirect to home or another page after submission
   };
   
 

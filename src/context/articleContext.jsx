@@ -15,7 +15,7 @@ export const ArticleProvider = ({ children }) => {
   const [userArray, setuserArray] = useState(demoUsers);
   const [isUserLoggedIn, setisUserLoggedIn] = useState(false);
   const [isPublisherLoggedIn, setisPublisherLoggedIn] = useState(false);
-  const [popular, setpopular] = useState([])
+  const [popular, setpopular] = useState([]);
 
   useEffect(() => {
     // Extract unique regions from articles in regionAvailable
@@ -37,12 +37,59 @@ export const ArticleProvider = ({ children }) => {
   const [deleteArticle, setdeleteArticle] = useState(false);
 
   // This should be dynamically set based on the logged-in publisher
-  const loggedPublisherId = 1;
+  const [loggedPublisherId, setloggedPublisherId] = useState(1);
 
   // Find the logged-in publisher's name
-  const loggedPublisher = publisherArray.find(
-    (publisher) => publisher.id === loggedPublisherId
+  const [loggedPublisher, setloggedPublisher] = useState(
+    publisherArray.find((publisher) => publisher.id === loggedPublisherId)
   );
+  // Effect to update loggedPublisher when loggedPublisherId changes
+  useEffect(() => {
+    setloggedPublisher(
+      publisherArray.find((publisher) => publisher.id === loggedPublisherId)
+    );
+  }, [loggedPublisherId, publisherArray]);
+
+  // This should be dynamically set based on the logged-in user
+  const [loggedUserId, setLoggedUserId] = useState(101);
+
+  // Find the logged-in user's object
+  const [loggedUser, setLoggedUser] = useState(
+    userArray.find((user) => user.userId === loggedUserId)
+  );
+
+  // Effect to update loggedUser when loggedUserId or userArray changes
+  useEffect(() => {
+    setLoggedUser(userArray.find((user) => user.userId === loggedUserId));
+  }, [loggedUserId, userArray]);
+
+  // Reset loggedUser when user logs out
+  useEffect(() => {
+    if (!isUserLoggedIn) {
+      setLoggedUserId(101);
+    }
+  }, [isUserLoggedIn]);
+
+  // Reset loggedPublisher when publisher logs out
+  useEffect(() => {
+    if (!isPublisherLoggedIn) {
+      setloggedPublisherId(1);
+    }
+  }, [isPublisherLoggedIn]);
+
+  // If user logs in, log out publisher
+  useEffect(() => {
+    if (isUserLoggedIn) {
+      setisPublisherLoggedIn(false);
+    }
+  }, [isUserLoggedIn]);
+
+  // If publisher logs in, log out user
+  useEffect(() => {
+    if (isPublisherLoggedIn) {
+      setisUserLoggedIn(false);
+    }
+  }, [isPublisherLoggedIn]);
 
   // Function to check if the date string matches the selected date
   const isSameDate = (dateStr, selectedDate) => {
@@ -67,7 +114,11 @@ export const ArticleProvider = ({ children }) => {
         // Otherwise, show articles matching any selected region
         return selectedRegion.includes(article.region);
       })
-      .sort((a, b) => b.engagement.votes - a.engagement.votes)
+      .sort(
+        (a, b) =>
+          (b.engagement.upVotes - b.engagement.downVotes) -
+          (a.engagement.upVotes - a.engagement.downVotes)
+      )
       .slice(0, 3);
     setpopular(topThree);
   }, [articles, selectedDate, selectedRegion]);
@@ -79,6 +130,8 @@ export const ArticleProvider = ({ children }) => {
     console.log("Selected region updated:", selectedRegion);
     console.log("Publisher array updated:", publisherArray);
     console.log("User array updated:", userArray);
+    console.log("Logged User:", loggedUser);
+    console.log("Logged Publisher:", loggedPublisher);
   }, [
     articles,
     regionAvailable,
@@ -86,6 +139,8 @@ export const ArticleProvider = ({ children }) => {
     selectedRegion,
     publisherArray,
     userArray,
+    loggedUser,
+    loggedPublisher,
   ]);
 
   const value = {
@@ -113,6 +168,14 @@ export const ArticleProvider = ({ children }) => {
     setisPublisherLoggedIn,
     popular,
     setpopular,
+    loggedUserId,
+    setLoggedUserId,
+    loggedUser,
+    setLoggedUser,
+    loggedPublisher,
+    setloggedPublisher,
+    loggedPublisherId,
+    setloggedPublisherId,
   };
 
   return (

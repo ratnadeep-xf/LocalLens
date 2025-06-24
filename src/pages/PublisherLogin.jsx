@@ -16,10 +16,17 @@ const PublisherLogin = () => {
     setpublisherArray,
     isPublisherLoggedIn,
     setisPublisherLoggedIn,
+    publisherId,
+    setloggedPublisherId,
+    loggedPublisher,
+    setloggedPublisher,
   } = useContext(articleContext);
 
   // State to manage the current mode (signup or signin)
   const [mode, setMode] = useState("signup");
+
+  // Add error message state
+  const [errorMsg, setErrorMsg] = useState("");
 
   // Initialize form methods from react-hook-form
   const {
@@ -27,6 +34,7 @@ const PublisherLogin = () => {
     handleSubmit,
     watch,
     control,
+    setValue, // <-- add this
     formState: { errors },
   } = useForm();
 
@@ -75,31 +83,31 @@ const PublisherLogin = () => {
     setpublisherArray((prev) => [...prev, publisherObj]);
 
     setisPublisherLoggedIn(true); // Set publisher as logged in
+    setloggedPublisherId(publisherObj.id); // Set publisher id
+    setloggedPublisher(publisherObj); // Set logged publisher object
     navigate("/"); // Redirect to home page
   };
 
   // Function to validate user data during sign-in
   const validateData = (data) => {
-    console.log("Validation Data:", data);
-    // Here you can validate the data, e.g., check if user exists
-    const userExists = publisherArray.some(
+    const matchedPublisher = publisherArray.find(
       (publisher) => publisher.email === data.email
     );
-    if (userExists) {
-      if (
-        data.password ===
-        publisherArray.find((publisher) => publisher.email === data.email)
-          .password
-      ) {
-        setisPublisherLoggedIn(true); // Set publisher as logged in
-        console.log("Validation successful:", data);
-        // Sign-in successful
-        navigate("/"); // Redirect to home page
+    if (matchedPublisher) {
+      if (data.password === matchedPublisher.password) {
+        setisPublisherLoggedIn(true);
+        setloggedPublisherId(matchedPublisher.id);
+        setloggedPublisher(matchedPublisher);
+        setErrorMsg("");
+        navigate("/");
       } else {
-        console.log("Incorrect password");
+        setErrorMsg("Incorrect password");
+        setValue("password", ""); // Reset only password field
       }
     } else {
-      console.log("User does not exist, please sign up");
+      setErrorMsg("User does not exist, please sign up");
+      setValue("email", "");     // Reset email field
+      setValue("password", "");  // Reset password field
     }
   };
 
@@ -108,7 +116,10 @@ const PublisherLogin = () => {
       <h1>User Login</h1>
       <div style={{ marginBottom: "1rem" }}>
         <button
-          onClick={() => setMode("signup")}
+          onClick={() => {
+            setMode("signup");
+            setErrorMsg("");
+          }}
           style={{
             fontWeight: mode === "signup" ? "bold" : "normal",
             marginRight: "1rem",
@@ -117,12 +128,17 @@ const PublisherLogin = () => {
           Sign Up
         </button>
         <button
-          onClick={() => setMode("signin")}
+          onClick={() => {
+            setMode("signin");
+            setErrorMsg("");
+          }}
           style={{ fontWeight: mode === "signin" ? "bold" : "normal" }}
         >
           Sign In
         </button>
       </div>
+      {/* Show error message on screen */}
+      {errorMsg && <div className="text-red-600 mb-2">{errorMsg}</div>}
       {mode === "signup" && (
         <form onSubmit={handleSubmit(newData)}>
           <input

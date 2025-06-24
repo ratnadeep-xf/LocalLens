@@ -1,9 +1,22 @@
 import React, { useContext } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { articleContext } from "../context/articleContext";
 
 const Navbar = () => {
-  const { isUserLoggedIn, isPublisherLoggedIn } = useContext(articleContext);
+  const {
+    isUserLoggedIn,
+    isPublisherLoggedIn,
+    setisUserLoggedIn,
+    setisPublisherLoggedIn,
+  } = useContext(articleContext);
+
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    if (isUserLoggedIn) setisUserLoggedIn(false);
+    if (isPublisherLoggedIn) setisPublisherLoggedIn(false);
+    navigate("/"); // Optionally redirect to home
+  };
 
   return (
     <nav className="flex justify-between items-center p-4 bg-gray-800 text-white">
@@ -43,6 +56,14 @@ const Navbar = () => {
             <Link to="/dashboard" className="nav-link">
               Dashboard
             </Link>
+          </button>
+        )}
+        {(isUserLoggedIn || isPublisherLoggedIn) && (
+          <button
+            className="logout button bg-red-600 text-white px-4 py-2 rounded"
+            onClick={handleLogout}
+          >
+            Log Out
           </button>
         )}
       </div>

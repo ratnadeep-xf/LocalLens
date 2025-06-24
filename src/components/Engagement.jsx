@@ -4,76 +4,53 @@ import { format } from "date-fns";
 import { articleContext } from "../context/articleContext";
 
 const Engagement = ({ article }) => {
-  const { userArray, articles, setArticles } = useContext(articleContext);
+  const { userArray, articles, setArticles, loggedUserId, isUserLoggedIn } = useContext(articleContext);
   const [userVote, setUserVote] = useState(null);
-  const [currentVotes, setCurrentVotes] = useState({
-    upVotes: article.engagement.upVotes,
-    downVotes: article.engagement.downVotes,
-  });
-  const [newComment, setnewComment] = useState(null);
+  const [newComment, setnewComment] = useState("");
 
   // Always get the latest article from context
   const latestArticle = articles.find((a) => a.id === article.id) || article;
 
   const handleVote = (voteType) => {
-    if (userVote === voteType) {
-      // User is removing their vote
-      setUserVote(null);
-      setCurrentVotes((prevVote) => {
-        return {
-          upVotes: voteType === "up" ? prevVote.upVotes - 1 : prevVote.upVotes,
-          downVotes:
-            voteType === "down" ? prevVote.downVotes - 1 : prevVote.downVotes,
-        };
-      });
-    } else {
-      // User is changing or adding a vote
-      if (userVote === null) {
-        // First time voting
-        setCurrentVotes((prevVotes) =>
-          voteType === "up"
-            ? { upVotes: prevVotes.upVotes + 1, downVotes: prevVotes.downVotes }
-            : { upVotes: prevVotes.upVotes, downVotes: prevVotes.downVotes + 1 }
-        );
-      } else {
-        // Switching vote (up <-> down)
-        setCurrentVotes((prevVotes) => {
-          if (voteType === "up") {
-            return {
-              upVotes: prevVotes.upVotes + 1,
-              downVotes: prevVotes.downVotes - 1,
-            };
-          } else {
-            return {
-              upVotes: prevVotes.upVotes - 1,
-              downVotes: prevVotes.downVotes + 1,
-            };
-          }
-        });
-      }
-      setUserVote(voteType);
-    }
     setArticles((prevArticles) =>
-      prevArticles.map((a) =>
-        a.id === article.id
-          ? {
-              ...a,
-              engagement: {
-                ...a.engagement,
-                upVotes: currentVotes.upVotes,
-                downVotes: currentVotes.downVotes,
-              },
-            }
-          : a
-      )
+      prevArticles.map((a) => {
+        if (a.id !== article.id) return a;
+
+        let upVotes = a.engagement.upVotes;
+        let downVotes = a.engagement.downVotes;
+
+        if (userVote === voteType) {
+          // Remove vote
+          if (voteType === "up") upVotes -= 1;
+          else downVotes -= 1;
+        } else if (userVote === null) {
+          // First time voting
+          if (voteType === "up") upVotes += 1;
+          else downVotes += 1;
+        } else {
+          // Switching vote
+          if (voteType === "up") {
+            upVotes += 1;
+            downVotes -= 1;
+          } else {
+            upVotes -= 1;
+            downVotes += 1;
+          }
+        }
+        return {
+          ...a,
+          engagement: { ...a.engagement, upVotes, downVotes },
+        };
+      })
     );
+    setUserVote(userVote === voteType ? null : voteType);
   };
 
   const handleClick = () => {
     if (newComment) {
       const newCommentObj = {
         commentId: Date.now(),
-        userId: "currentUserId", // Replace with actual user ID
+        userId: loggedUserId,
         content: newComment,
         createdAt: new Date(),
       };
@@ -90,55 +67,58 @@ const Engagement = ({ article }) => {
             : a
         )
       );
-      console.log("New comment added:", newCommentObj);
       setnewComment("");
     }
   };
+
   return (
     <div className="space-y-6">
       {/* Voting Section */}
       <div className="bg-white rounded-lg shadow-sm p-6">
         <h3 className="text-lg font-semibold mb-4">Rate this article</h3>
-        <div className="flex items-center justify-center space-x-4">
-          <button
-            onClick={() => handleVote("up")}
-            className={`flex items-center justify-center w-12 h-12 rounded-full border-2 transition-colors ${
-              userVote === "up"
-                ? "bg-green-500 border-green-500 text-white"
-                : "border-green-500 text-green-500 hover:bg-green-50"
-            }`}
-          >
-            <ArrowUp className="h-5 w-5" />
-          </button>
-
-          <div className="text-center">
-            <div className="text-2xl font-bold text-gray-900">
-              {currentVotes.upVotes}
+        {isUserLoggedIn ? (
+          <div className="flex items-center justify-center space-x-4">
+            <button
+              onClick={() => handleVote("up")}
+              className={`flex items-center justify-center w-12 h-12 rounded-full border-2 transition-colors ${
+                userVote === "up"
+                  ? "bg-green-500 border-green-500 text-white"
+                  : "border-green-500 text-green-500 hover:bg-green-50"
+              }`}
+            >
+              <ArrowUp className="h-5 w-5" />
+            </button>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-gray-900">
+                {latestArticle.engagement.upVotes}
+              </div>
+              <div className="text-sm text-gray-500"> upVotes</div>
             </div>
-            <div className="text-sm text-gray-500"> upVotes</div>
-          </div>
-
-          <button
-            onClick={() => handleVote("down")}
-            className={`flex items-center justify-center w-12 h-12 rounded-full border-2 transition-colors ${
-              userVote === "down"
-                ? "bg-red-500 border-red-500 text-white"
-                : "border-red-500 text-red-500 hover:bg-red-50"
-            }`}
-          >
-            <ArrowDown className="h-5 w-5" />
-          </button>
-
-          <div className="text-center">
-            <div className="text-2xl font-bold text-gray-900">
-              {currentVotes.downVotes}
+            <button
+              onClick={() => handleVote("down")}
+              className={`flex items-center justify-center w-12 h-12 rounded-full border-2 transition-colors ${
+                userVote === "down"
+                  ? "bg-red-500 border-red-500 text-white"
+                  : "border-red-500 text-red-500 hover:bg-red-50"
+              }`}
+            >
+              <ArrowDown className="h-5 w-5" />
+            </button>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-gray-900">
+                {latestArticle.engagement.downVotes}
+              </div>
+              <div className="text-sm text-gray-500"> downVotes</div>
             </div>
-            <div className="text-sm text-gray-500"> downVotes</div>
           </div>
-        </div>
+        ) : (
+          <div className="text-gray-500 text-center">
+            Please log in to vote on this article.
+          </div>
+        )}
       </div>
 
-      { /* Comments Section */}
+      {/* Comments Section */}
       <div className="bg-white rounded-lg shadow-sm p-6">
         <div className="flex items-center space-x-2 mb-4">
           <MessageCircle className="h-5 w-5 text-blue-600" />
@@ -185,21 +165,29 @@ const Engagement = ({ article }) => {
 
         {/* Add Comment Input */}
         <div className="mt-4 pt-4 border-t border-gray-100">
-          <textarea
-            placeholder="Add a comment..."
-            value={newComment || ""} 
-            className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            rows="3"
-            onChange={(e) => {
-              setnewComment(e.target.value);
-            }}
-          />
-          <button
-            className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            onClick={handleClick}
-          >
-            Post Comment
-          </button>
+          {isUserLoggedIn ? (
+            <>
+              <textarea
+                placeholder="Add a comment..."
+                value={newComment}
+                className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                rows="3"
+                onChange={(e) => {
+                  setnewComment(e.target.value);
+                }}
+              />
+              <button
+                className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                onClick={handleClick}
+              >
+                Post Comment
+              </button>
+            </>
+          ) : (
+            <div className="text-gray-500 text-center">
+              Please log in to add a comment.
+            </div>
+          )}
         </div>
       </div>
     </div>

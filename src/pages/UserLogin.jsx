@@ -10,8 +10,9 @@ const UserLogin = () => {
     userArray,
     setuserArray,
     regionAvailable,
-    isUserLoggedIn,
     setisUserLoggedIn,
+    setLoggedUserId,
+    setLoggedUser,
   } = useContext(articleContext);
 
   const navigate = useNavigate();
@@ -31,7 +32,7 @@ const UserLogin = () => {
   // Function to handle new user data during sign-up
   const newData = (data) => {
     const userObj = {
-      id: Date.now(), // unique id
+      userId: Date.now(), // unique id
       name: data.name,
       email: data.email,
       password: data.password,
@@ -40,19 +41,20 @@ const UserLogin = () => {
 
     setuserArray((prevUsers) => [...prevUsers, userObj]);
     setisUserLoggedIn(true); // Set user as logged in
+    setLoggedUserId(userObj.userId); // Set logged user id
+    setLoggedUser(userObj); // Set logged user object
     console.log("New User Data:", userObj);
     navigate("/"); // Redirect to home
   };
 
   // Function to validate user data during sign-in
   const validateData = (data) => {
-    const userExists = userArray.some((user) => user.email === data.email);
-    if (userExists) {
-      if (
-        data.password ===
-        userArray.find((user) => user.email === data.email).password
-      ) {
-        setisUserLoggedIn(userExists); // Set user as logged in if exists
+    const matchedUser = userArray.find((user) => user.email === data.email);
+    if (matchedUser) {
+      if (data.password === matchedUser.password) {
+        setisUserLoggedIn(true); // Set user as logged in
+        setLoggedUserId(matchedUser.userId); // Set logged user id
+        setLoggedUser(matchedUser); // Set logged user object
         console.log("Validation Data:", data);
         navigate("/"); // Redirect to home
       } else {
