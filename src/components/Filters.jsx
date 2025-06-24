@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useMemo } from "react";
 import Select from "react-select";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -15,6 +15,33 @@ const Filters = ({ isDashboard = false, publisherId }) => {
     publisherArray,
   } = useContext(articleContext);
 
+  // Compute region options: remove "all" if any region other than "all" is selected
+  const regionOptions = useMemo(() => {
+    let baseOptions;
+    if (isDashboard) {
+      const publisherRegions =
+        publisherArray.find((publisher) => publisher.id === publisherId)
+          ?.regions || [];
+      baseOptions = publisherRegions.map((region) => ({
+        value: region,
+        label: region.charAt(0).toUpperCase() + region.slice(1),
+      }));
+    } else {
+      baseOptions = [...regionAvailable];
+    }
+
+    // If "all" is selected, show "all" option; otherwise, remove it
+    if (selectedRegion.length === 1 && selectedRegion[0] === "all") {
+      if (!baseOptions.some((opt) => opt.value === "all")) {
+        baseOptions.unshift({ value: "all", label: "All Regions" });
+      }
+      return baseOptions;
+    } else {
+      // Remove "all" from options
+      return baseOptions.filter((opt) => opt.value !== "all");
+    }
+  }, [regionAvailable, isDashboard, publisherArray, publisherId, selectedRegion]);
+
   // Handle region selection change
   const handleRegionChange = (options) => {
     const values = options ? options.map((option) => option.value) : [];
@@ -28,19 +55,6 @@ const Filters = ({ isDashboard = false, publisherId }) => {
       setSelectedRegion(["all"]);
     }
   };
- 
-  let regionOptions = regionAvailable;
-
-  if (isDashboard) {
-    const publisherRegions =
-      publisherArray.find((publisher) => publisher.id === publisherId)
-        ?.regions || [];
-    regionOptions = publisherRegions.map((region) => ({
-      value: region,
-      label: region.charAt(0).toUpperCase() + region.slice(1),
-    }));
-    regionOptions.unshift({ value: "all", label: "All Regions" })
-  }
 
   const resetFilters = () => {
     setSelectedRegion(["all"]); // Reset to "all" regions

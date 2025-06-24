@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { ArrowUp, ArrowDown, MessageCircle, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
@@ -17,10 +17,22 @@ const ArticleCard = ({
     navigate(`/article/${article.id}`, { state: { article } });
   };
 
-  const { modal, setmodal } = useContext(articleContext);
+  const { modal, setmodal, deleteArticle, setdeleteArticle, setArticles } = useContext(articleContext);
   const togglemodal = () => {
     setmodal(!modal);
   };
+
+  useEffect(() => {
+    if (deleteArticle) {
+      const handleDelete = () => {
+        setArticles((prevArticles) =>
+          prevArticles.filter((a) => a.id !== article.id)
+        );
+        setdeleteArticle(false);
+      };
+      handleDelete();
+    }
+  }, [deleteArticle]);
 
   return (
     <div className="group">
@@ -39,14 +51,14 @@ const ArticleCard = ({
           />
           {/* Dark overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-          
+
           {/* Popular Badge */}
           {isPopular.value && (
             <div className="absolute top-4 left-4 inline-flex items-center px-3 py-1 rounded-full bg-accent-500 text-white text-sm font-semibold shadow-lg">
               #{isPopular.rank} Popular
             </div>
           )}
-          
+
           {/* Delete Button for Dashboard */}
           {isDashboard && (
             <button
@@ -59,7 +71,7 @@ const ArticleCard = ({
               <Trash2 className="w-4 h-4" />
             </button>
           )}
-          
+
           {/* Title overlay */}
           <div className="absolute bottom-0 left-0 right-0 p-6">
             <h2 className="text-white text-xl font-bold leading-tight line-clamp-2">
@@ -67,7 +79,7 @@ const ArticleCard = ({
             </h2>
           </div>
         </div>
-        
+
         {/* Bottom Section */}
         <div className="p-4 bg-white">
           <div className="flex items-center justify-between mb-3">
