@@ -44,68 +44,124 @@ const PublisherLogin = () => {
     name: "preferredRegions",
   });
 
-  // Function to handle new user data during sign-up
-  const newData = (data) => {
-    const selectedValues = data.preferredRegions?.map((opt) => opt.value) || [];
+  // Function to handle new publisher data during sign-up
+  const newData = async (data) => {
+    try {
+      setErrorMsg(''); // Clear any previous errors
 
-    if (selectedValues.includes("other") && data.newRegion) {
-      const newRegion = data.newRegion.trim();
-
-      // Avoid duplicates
-      const alreadyExists = regionAvailable.some(
-        (opt) => opt.value.toLowerCase() === newRegion.toLowerCase()
-      );
-
-      if (!alreadyExists) {
-        const newOption = {
-          value: newRegion,
-          label: newRegion.charAt(0).toUpperCase() + newRegion.slice(1),
-        };
-
-        // Add new region to the options list
-        setregionAvailable((prev) => [...prev, newOption]);
+      // Validate regions
+      if (!data.preferredRegions || data.preferredRegions.length === 0) {
+        throw new Error('Please select at least one region');
       }
+
+      const selectedValues = data.preferredRegions.map((opt) => opt.value);
+      let regions = selectedValues;
+
+      // Handle new region if "other" is selected
+      if (selectedValues.includes("other")) {
+        if (!data.newRegion || !data.newRegion.trim()) {
+          throw new Error('Please enter a name for the new region');
+        }
+        const newRegion = data.newRegion.trim();
+        regions = selectedValues.map(r => r === "other" ? newRegion : r);
+
+        // Add new region to the options list if it doesn't exist
+        const alreadyExists = regionAvailable.some(
+          (opt) => opt.value.toLowerCase() === newRegion.toLowerCase()
+        );
+
+        if (!alreadyExists) {
+          const newOption = {
+            value: newRegion,
+            label: newRegion.charAt(0).toUpperCase() + newRegion.slice(1),
+          };
+          setregionAvailable((prev) => [...prev, newOption]);
+        }
+      }
+
+      // Validate phone number
+      const phoneRegex = /^\d{10}$/;
+      if (!phoneRegex.test(data.phone)) {
+        throw new Error('Phone number must be exactly 10 digits');
+      }
+
+      const response = await fetch('/api/auth/publisher-register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          agencyName: data.agency_name,
+          email: data.email,
+          password: data.password,
+          regions: regions.filter(r => r !== 'other'), // Remove 'other' from regions
+          contactPerson: data.contact_person_name,
+          phone: data.phone
+        }),
+      });
+
+      // First check if the response is ok
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (errorData.errors && Array.isArray(errorData.errors)) {
+          // Join multiple validation errors into a single message
+          throw new Error(errorData.errors.join(', '));
+        }
+        throw new Error(errorData.message || 'Error during registration');
+      }
+
+      const result = await response.json();
+
+      // Set publisher as logged in
+      setisPublisherLoggedIn(true);
+      setloggedPublisherId(result.publisher.id);
+      setloggedPublisher(result.publisher);
+      
+      // Store the token
+      localStorage.setItem('token', result.token);
+      
+      navigate('/');
+    } catch (error) {
+      console.error('Registration error:', error);
+      setErrorMsg(error.message || 'Error connecting to the server. Please try again.');
     }
-
-    console.log("Form Data:", data);
-    // Here you can handle the form submission, e.g., send data to an API
-    const publisherObj = {
-      id: Date.now(), // or a better unique id
-      agencyName: data.agency_name,
-      email: data.email,
-      password: data.password,
-      contactPerson: data.contact_person_name,
-      phone: data.phone,
-      regions: (data.preferredRegions || []).map((r) =>
-        r.value === "other" ? data.newRegion : r.value
-      ),
-    };
-
-    setpublisherArray((prev) => [...prev, publisherObj]);
-
-    setisPublisherLoggedIn(true); // Set publisher as logged in
-    setloggedPublisherId(publisherObj.id); // Set publisher id
-    setloggedPublisher(publisherObj); // Set logged publisher object
-    navigate("/"); // Redirect to home page
   };
 
-  // Function to validate user data during sign-in
-  const validateData = (data) => {
-    const matchedPublisher = publisherArray.find(
-      (publisher) => publisher.email === data.email
-    );
-    if (matchedPublisher) {
-      if (data.password === matchedPublisher.password) {
-        setisPublisherLoggedIn(true);
-        setloggedPublisherId(matchedPublisher.id);
-        setloggedPublisher(matchedPublisher);
-        setErrorMsg("");
-        navigate("/");
-      } else {
-        setErrorMsg("Incorrect password. Please try again.");
+  // Function to validate publisher data during sign-in
+  const validateData = async (data) => {
+    try {
+      setErrorMsg(''); // Clear any previous errors
+      const response = await fetch('/api/auth/publisher-login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+        }),
+      });
+
+      // First check if the response is ok
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Invalid credentials');
       }
-    } else {
-      setErrorMsg("Publisher account does not exist. Please sign up first.");
+
+      const result = await response.json();
+
+      // Set publisher as logged in
+      setisPublisherLoggedIn(true);
+      setloggedPublisherId(result.publisher.id);
+      setloggedPublisher(result.publisher);
+      
+      // Store the token
+      localStorage.setItem('token', result.token);
+      
+      navigate('/');
+    } catch (error) {
+      console.error('Login error:', error);
+      setErrorMsg(error.message || 'Error connecting to the server. Please try again.');
     }
   };
 
@@ -245,8 +301,8 @@ const PublisherLogin = () => {
                   {...register("password", {
                     required: { value: true, message: "Password is required" },
                     minLength: {
-                      value: 6,
-                      message: "Password should be at least 6 characters long",
+                      value: 8,
+                      message: "Password must be at least 8 characters long",
                     },
                   })}
                 />

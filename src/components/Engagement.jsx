@@ -1,73 +1,116 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { ArrowUp, ArrowDown, MessageCircle, User, Send } from "lucide-react";
 import { format } from "date-fns";
 import { articleContext } from "../context/articleContext";
 
 const Engagement = ({ article }) => {
-  const { userArray, articles, setArticles, loggedUserId, isUserLoggedIn } = useContext(articleContext);
+  const { userArray, articles, setArticles, loggedUserId, isUserLoggedIn, token } = useContext(articleContext);
   const [userVote, setUserVote] = useState(null);
   const [newComment, setnewComment] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
 
   // Always get the latest article from context
   const latestArticle = articles.find((a) => a.id === article.id) || article;
 
-  const handleVote = (voteType) => {
-    setArticles((prevArticles) =>
-      prevArticles.map((a) => {
-        if (a.id !== article.id) return a;
+  // Initialize userVote based on existing votes when component mounts
+  useEffect(() => {
+    if (latestArticle.engagement.votesArray) {
+      const existingVote = latestArticle.engagement.votesArray.find(
+        vote => vote.userId === loggedUserId
+      );
+      if (existingVote) {
+        setUserVote(existingVote.value === 1 ? "up" : "down");
+      }
+    }
+  }, [latestArticle.engagement.votesArray, loggedUserId]);
 
-        let upVotes = a.engagement.upVotes;
-        let downVotes = a.engagement.downVotes;
+  const handleVote = async (voteType) => {
+    if (!isUserLoggedIn) return;
+    if (isSubmitting) return;
 
-        if (userVote === voteType) {
-          // Remove vote
-          if (voteType === "up") upVotes -= 1;
-          else downVotes -= 1;
-        } else if (userVote === null) {
-          // First time voting
-          if (voteType === "up") upVotes += 1;
-          else downVotes += 1;
-        } else {
-          // Switching vote
-          if (voteType === "up") {
-            upVotes += 1;
-            downVotes -= 1;
-          } else {
-            upVotes -= 1;
-            downVotes += 1;
-          }
-        }
-        return {
-          ...a,
-          engagement: { ...a.engagement, upVotes, downVotes },
-        };
-      })
-    );
-    setUserVote(userVote === voteType ? null : voteType);
-  };
+    try {
+      setIsSubmitting(true);
+      setError(null);
 
-  const handleClick = () => {
-    if (newComment.trim()) {
-      const newCommentObj = {
-        commentId: Date.now(),
-        userId: loggedUserId,
-        content: newComment.trim(),
-        createdAt: new Date(),
-      };
-      setArticles((prevArticles) =>
-        prevArticles.map((a) =>
-          a.id === article.id
-            ? {
-                ...a,
-                engagement: {
-                  ...a.engagement,
-                  commentsArray: [...a.engagement.commentsArray, newCommentObj],
-                },
-              }
-            : a
+      const response = await fetch(`/api/articles/${article.id}/vote`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          value: voteType === "up" ? 1 : -1
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to cast vote');
+      }
+
+      const updatedArticle = await response.json();
+
+      // Update articles in context
+      setArticles(prevArticles =>
+        prevArticles.map(a =>
+          a.id === article.id ? updatedArticle : a
         )
       );
+
+      // Update local user vote state
+      const newVoteArray = updatedArticle.engagement.votesArray;
+      const userVoteEntry = newVoteArray.find(vote => vote.userId === loggedUserId);
+      setUserVote(userVoteEntry ? (userVoteEntry.value === 1 ? "up" : "down") : null);
+
+    } catch (err) {
+      setError(err.message);
+      console.error('Error casting vote:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleClick = async () => {
+    if (!isUserLoggedIn || !newComment.trim() || isSubmitting) return;
+
+    try {
+      setIsSubmitting(true);
+      setError(null);
+
+      const response = await fetch(`/api/articles/${article.id}/comment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          content: newComment.trim()
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to post comment');
+      }
+
+      const updatedArticle = await response.json();
+
+      // Update articles in context
+      setArticles(prevArticles =>
+        prevArticles.map(a =>
+          a.id === article.id ? updatedArticle : a
+        )
+      );
+
+      // Clear comment input
       setnewComment("");
+
+    } catch (err) {
+      setError(err.message);
+      console.error('Error posting comment:', err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -76,16 +119,22 @@ const Engagement = ({ article }) => {
       {/* Voting Section */}
       <div className="bg-white rounded-xl shadow-card p-6">
         <h3 className="text-lg font-semibold text-neutral-900 mb-4">Rate this article</h3>
+        {error && (
+          <div className="mb-4 p-3 bg-accent-50 text-accent-700 rounded-lg">
+            {error}
+          </div>
+        )}
         {isUserLoggedIn ? (
           <div className="flex items-center justify-center space-x-8">
             <div className="text-center">
               <button
                 onClick={() => handleVote("up")}
+                disabled={isSubmitting}
                 className={`flex items-center justify-center w-14 h-14 rounded-full border-2 transition-all duration-200 ${
                   userVote === "up"
                     ? "bg-green-500 border-green-500 text-white shadow-lg"
                     : "border-green-500 text-green-500 hover:bg-green-50 hover:shadow-md"
-                }`}
+                } ${isSubmitting ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 <ArrowUp className="h-6 w-6" />
               </button>
@@ -100,11 +149,12 @@ const Engagement = ({ article }) => {
             <div className="text-center">
               <button
                 onClick={() => handleVote("down")}
+                disabled={isSubmitting}
                 className={`flex items-center justify-center w-14 h-14 rounded-full border-2 transition-all duration-200 ${
                   userVote === "down"
                     ? "bg-accent-500 border-accent-500 text-white shadow-lg"
                     : "border-accent-500 text-accent-500 hover:bg-accent-50 hover:shadow-md"
-                }`}
+                } ${isSubmitting ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 <ArrowDown className="h-6 w-6" />
               </button>
@@ -157,7 +207,7 @@ const Engagement = ({ article }) => {
                         })()}
                       </span>
                       <span className="text-xs text-neutral-500">
-                        {format(comment.createdAt, "MMM d, h:mm a")}
+                        {format(new Date(comment.createdAt), "MMM d, h:mm a")}
                       </span>
                     </div>
                     <p className="text-sm text-neutral-700 leading-relaxed">
@@ -178,6 +228,11 @@ const Engagement = ({ article }) => {
         <div className="border-t border-neutral-100 pt-6">
           {isUserLoggedIn ? (
             <div className="space-y-3">
+              {error && (
+                <div className="p-3 bg-accent-50 text-accent-700 rounded-lg">
+                  {error}
+                </div>
+              )}
               <textarea
                 placeholder="Share your thoughts on this article..."
                 value={newComment}
@@ -190,11 +245,11 @@ const Engagement = ({ article }) => {
               <div className="flex justify-end">
                 <button
                   onClick={handleClick}
-                  disabled={!newComment.trim()}
+                  disabled={!newComment.trim() || isSubmitting}
                   className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:bg-neutral-300 disabled:cursor-not-allowed transition-colors duration-200"
                 >
                   <Send className="w-4 h-4" />
-                  Post Comment
+                  {isSubmitting ? 'Posting...' : 'Post Comment'}
                 </button>
               </div>
             </div>

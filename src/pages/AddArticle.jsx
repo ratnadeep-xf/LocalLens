@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import Select from "react-select";
 import { useForm, Controller, useWatch } from "react-hook-form";
@@ -8,6 +8,7 @@ import { FileText, Image, MapPin, Save } from "lucide-react";
 
 const AddArticle = () => {
   const navigate = useNavigate();
+  const [submitError, setSubmitError] = useState(null);
 
   const {
     articles,
@@ -15,8 +16,12 @@ const AddArticle = () => {
     regionAvailable,
     setregionAvailable,
     loggedPublisher,
+    loggedPublisherId,
     publisherArray,
-    setpublisherArray, // <-- make sure this is in your context
+    setpublisherArray,
+    token,
+    isPublisherLoggedIn,
+    fetchArticles
   } = useContext(articleContext);
 
   const {
@@ -27,59 +32,137 @@ const AddArticle = () => {
     formState: { errors },
   } = useForm();
 
+  // Redirect if not logged in as publisher
+  useEffect(() => {
+    if (!token || !isPublisherLoggedIn) {
+      navigate('/publisher/login');
+    }
+  }, [token, isPublisherLoggedIn, navigate]);
+
+  // Redirect if no publisher data
+  useEffect(() => {
+    if (!loggedPublisher || !loggedPublisherId) {
+      navigate('/publisher/login');
+    }
+  }, [loggedPublisher, loggedPublisherId, navigate]);
+
   const selectedRegions = useWatch({
     control,
     name: "regionOfArticle",
   });
 
-  const onSubmit = (data) => {
-    // If user selected "other" region, add it to regionAvailable
-    let region = data.regionOfArticle?.value;
-    if (region === "other" && data.newRegion) {
-      region = data.newRegion;
-      // Optionally add new region to regionAvailable if not already present
-      if (!regionAvailable.some((opt) => opt.value === region)) {
-        setregionAvailable((prev) => [
-          ...prev,
-          {
-            value: region,
-            label: region.charAt(0).toUpperCase() + region.slice(1),
-          },
-        ]);
+  const onSubmit = async (data) => {
+    try {
+      setSubmitError(null);
+
+      // Validate authentication
+      if (!token || !isPublisherLoggedIn) {
+        navigate('/publisher/login');
+        throw new Error('Authentication required. Please log in again.');
       }
-      // Add new region to the loggedPublisher's regions in publisherArray
-      setpublisherArray((prev) =>
-        prev.map((pub) =>
-          pub.id === loggedPublisher.id && !pub.regions.includes(region)
-            ? { ...pub, regions: [...pub.regions, region] }
-            : pub
-        )
-      );
+
+      // Validate publisher data
+      if (!loggedPublisher || !loggedPublisherId) {
+        navigate('/publisher/login');
+        throw new Error('Publisher information not found. Please log in again.');
+      }
+
+      // Handle region selection
+      let region;
+      if (data.regionOfArticle?.value === "other" && data.newRegion) {
+        region = data.newRegion.trim().toLowerCase();
+        if (!region) {
+          throw new Error('New region name is required');
+        }
+      } else if (data.regionOfArticle?.value) {
+        region = data.regionOfArticle.value;
+      } else {
+        throw new Error('Region selection is required');
+      }
+
+      // Validate title and content
+      if (!data.title?.trim()) {
+        throw new Error('Title is required');
+      }
+      if (!data.content?.trim()) {
+        throw new Error('Content is required');
+      }
+      if (data.title.length > 100) {
+        throw new Error('Title should be less than 100 characters');
+      }
+      if (data.content.length < 50) {
+        throw new Error('Content should be at least 50 characters long');
+      }
+
+      // Handle image upload if provided
+      let imageUrl = '/default-image.png';
+      if (data.image && data.image[0]) {
+        const formData = new FormData();
+        formData.append('image', data.image[0]);
+        // TODO: Implement image upload endpoint and update imageUrl
+      }
+
+      // Create article
+      const response = await fetch('/api/articles', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          title: data.title.trim(),
+          content: data.content.trim(),
+          region: region,
+          img: imageUrl
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error creating article');
+      }
+
+      const result = await response.json();
+
+      // If using "other" region, update available regions
+      if (data.regionOfArticle?.value === "other") {
+        const newOption = {
+          value: region,
+          label: region.charAt(0).toUpperCase() + region.slice(1),
+        };
+        
+        // Update available regions if not already present
+        if (!regionAvailable.some(opt => opt.value === region)) {
+          setregionAvailable(prev => [...prev, newOption]);
+        }
+        
+        // Update publisher's regions if not already present
+        setpublisherArray(prev =>
+          prev.map(pub =>
+            pub.id === loggedPublisherId && !pub.regions.includes(region)
+              ? { ...pub, regions: [...pub.regions, region] }
+              : pub
+          )
+        );
+      }
+
+      // Add the new article to articles state
+      setArticles(prev => [result, ...prev]);
+
+      // Refresh the articles list after successful creation
+      await fetchArticles();
+
+      navigate("/dashboard");
+    } catch (error) {
+      console.error('Error creating article:', error);
+      setSubmitError(error.message || 'Error creating article. Please try again.');
     }
-
-    // Build the new article object
-    const newArticle = {
-      id: Date.now(), // or use a better unique id
-      img: "/default-image.png", // or handle uploaded image
-      title: data.title,
-      region: region,
-      date: new Date().toLocaleDateString("en-GB").split("/").join("-"), // dd-mm-yyyy
-      publisher: loggedPublisher?.agencyName || "Unknown Publisher",
-      content: data.content,
-      engagement: {
-        upVotes: 0,
-        downVotes: 0,
-        comments: 0,
-        votesArray: [],
-        commentsArray: [],
-      },
-    };
-
-    // Add the new article to articles state
-    setArticles((prev) => [newArticle, ...prev]);
-    console.log("Updated Articles" + articles);
-    navigate("/dashboard"); // Redirect to dashboard after submission
   };
+
+  // If not authenticated as publisher, show loading or redirect
+  if (!token || !isPublisherLoggedIn || !loggedPublisher) {
+    return null; // Component will redirect via useEffect
+  }
 
   const customSelectStyles = {
     control: (provided, state) => ({
@@ -110,6 +193,12 @@ const AddArticle = () => {
               Share your story with the community
             </p>
           </div>
+
+          {submitError && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-600">{submitError}</p>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Title */}

@@ -18,13 +18,20 @@ const Home = () => {
 
   // Function to check if the date string matches the selected date
   const isSameDate = (dateStr, selectedDate) => {
-    const [day, month, year] = dateStr.split("-");
-    const d = new Date(`${year}-${month}-${day}`);
-    return (
-      d.getDate() === selectedDate.getDate() &&
-      d.getMonth() === selectedDate.getMonth() &&
-      d.getFullYear() === selectedDate.getFullYear()
-    );
+    try {
+      // Backend date format is dd-mm-yyyy
+      const [day, month, year] = dateStr.split("-");
+      const articleDate = new Date(year, month - 1, day); // month is 0-based in JS Date
+      
+      return (
+        articleDate.getDate() === selectedDate.getDate() &&
+        articleDate.getMonth() === selectedDate.getMonth() &&
+        articleDate.getFullYear() === selectedDate.getFullYear()
+      );
+    } catch (err) {
+      console.error('Error comparing dates:', err);
+      return false;
+    }
   };
   
   return (

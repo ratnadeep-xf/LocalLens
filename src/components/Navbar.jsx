@@ -6,16 +6,14 @@ const Navbar = () => {
   const {
     isUserLoggedIn,
     isPublisherLoggedIn,
-    setisUserLoggedIn,
-    setisPublisherLoggedIn,
+    logout
   } = useContext(articleContext);
 
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    if (isUserLoggedIn) setisUserLoggedIn(false);
-    if (isPublisherLoggedIn) setisPublisherLoggedIn(false);
-    navigate("/"); // Optionally redirect to home
+    logout(); // This will handle all cleanup including token removal and state resets
+    navigate("/");
   };
 
   return (

@@ -1,28 +1,123 @@
 import { createContext, useState, useEffect } from "react";
-import { demoArticles, demoPublishers, demoUsers } from "./demoData"; //
-import { is } from "date-fns/locale";
+import { demoArticles, demoPublishers, demoUsers } from "./demoData";
 
 export const articleContext = createContext();
+
 export const ArticleProvider = ({ children }) => {
-  // State to manage selected date and region
-  const [articles, setArticles] = useState(
-    Array.isArray(demoArticles) ? demoArticles : []
-  );
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [regionAvailable, setregionAvailable] = useState([]);
-  const [selectedRegion, setSelectedRegion] = useState(["all"]);
-  const [publisherArray, setpublisherArray] = useState(demoPublishers);
-  const [userArray, setuserArray] = useState(demoUsers);
+  // Authentication states
+  const [token, setToken] = useState(localStorage.getItem('token'));
   const [isUserLoggedIn, setisUserLoggedIn] = useState(false);
   const [isPublisherLoggedIn, setisPublisherLoggedIn] = useState(false);
+
+  // Data states
+  const [articles, setArticles] = useState([]);
+  const [publisherArray, setpublisherArray] = useState([]);
+  const [userArray, setuserArray] = useState([]);
   const [popular, setpopular] = useState([]);
 
-  useEffect(() => {
-    // Extract unique regions from articles in regionAvailable
-    const uniqueRegions = [
-      ...new Set(articles.map((article) => article.region)),
-    ];
+  // UI states
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [regionAvailable, setregionAvailable] = useState([{ value: 'all', label: 'All Regions' }]);
+  const [selectedRegion, setSelectedRegion] = useState(['all']);
+  const [modal, setmodal] = useState(false);
+  const [deleteArticle, setdeleteArticle] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
+  // User/Publisher states
+  const [loggedUserId, setLoggedUserId] = useState(null);
+  const [loggedPublisherId, setloggedPublisherId] = useState(null);
+  const [loggedUser, setLoggedUser] = useState(null);
+  const [loggedPublisher, setloggedPublisher] = useState(null);
+
+  // Function to fetch articles
+  const fetchArticles = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Convert selected date to backend format (dd-mm-yyyy)
+      const formattedDate = selectedDate ? 
+        `${String(selectedDate.getDate()).padStart(2, '0')}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${selectedDate.getFullYear()}` : 
+        null;
+
+      // Build query string
+      const params = new URLSearchParams();
+      
+      // Only add region if it's not 'all'
+      if (selectedRegion && selectedRegion.length > 0) {
+        const region = Array.isArray(selectedRegion) ? selectedRegion[0] : selectedRegion;
+        if (region !== 'all') {
+          params.append('region', region);
+        }
+      }
+
+      if (formattedDate) {
+        params.append('date', formattedDate);
+      }
+
+      const url = `/api/articles${params.toString() ? `?${params.toString()}` : ''}`;
+      console.log('Fetching articles from:', url);
+      console.log('Current filters:', { selectedRegion, formattedDate });
+
+      const response = await fetch(url, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        }
+      });
+
+      console.log('Response status:', response.status);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Received articles:', data.length);
+
+      if (!Array.isArray(data)) {
+        throw new Error('Invalid data format received from server');
+      }
+
+      setArticles(data);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching articles:', err);
+      setError(err.message || 'Failed to fetch articles');
+      setArticles([]); // Reset articles on error
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Sync token with localStorage
+  useEffect(() => {
+    const storedToken = localStorage.getItem('token');
+    if (storedToken !== token) {
+      setToken(storedToken);
+    }
+  }, []);
+
+  // Update localStorage when token changes
+  useEffect(() => {
+    if (token) {
+      localStorage.setItem('token', token);
+    } else {
+      localStorage.removeItem('token');
+    }
+  }, [token]);
+
+  // Fetch articles whenever filters change
+  useEffect(() => {
+    fetchArticles();
+  }, [selectedDate, selectedRegion, token]); // Add filter dependencies
+
+  // Extract unique regions from articles
+  useEffect(() => {
+    const uniqueRegions = [...new Set(articles.map((article) => article.region))];
     const initialRegions = uniqueRegions.map((region) => ({
       value: region,
       label: region.charAt(0).toUpperCase() + region.slice(1),
@@ -32,86 +127,69 @@ export const ArticleProvider = ({ children }) => {
     setregionAvailable(initialRegions);
   }, [articles]);
 
-  // State to manage modal visibility
-  const [modal, setmodal] = useState(false);
-  const [deleteArticle, setdeleteArticle] = useState(false);
-
-  // This should be dynamically set based on the logged-in publisher
-  const [loggedPublisherId, setloggedPublisherId] = useState(1);
-
-  // Find the logged-in publisher's name
-  const [loggedPublisher, setloggedPublisher] = useState(
-    publisherArray.find((publisher) => publisher.id === loggedPublisherId)
-  );
-  // Effect to update loggedPublisher when loggedPublisherId changes
+  // Handle authentication state
   useEffect(() => {
-    setloggedPublisher(
-      publisherArray.find((publisher) => publisher.id === loggedPublisherId)
-    );
-  }, [loggedPublisherId, publisherArray]);
+    const checkAuth = async () => {
+      if (!token) {
+        setisUserLoggedIn(false);
+        setisPublisherLoggedIn(false);
+        setLoggedUser(null);
+        setloggedPublisher(null);
+        setLoggedUserId(null);
+        setloggedPublisherId(null);
+        return;
+      }
 
-  // This should be dynamically set based on the logged-in user
-  const [loggedUserId, setLoggedUserId] = useState(101);
+      try {
+        const response = await fetch('/api/auth/verify', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
 
-  // Find the logged-in user's object
-  const [loggedUser, setLoggedUser] = useState(
-    userArray.find((user) => user.userId === loggedUserId)
-  );
+        if (!response.ok) {
+          throw new Error('Invalid token');
+        }
 
-  // Effect to update loggedUser when loggedUserId or userArray changes
-  useEffect(() => {
-    setLoggedUser(userArray.find((user) => user.userId === loggedUserId));
-  }, [loggedUserId, userArray]);
+        const data = await response.json();
+        
+        if (data.role === 'reader') {
+          setisUserLoggedIn(true);
+          setisPublisherLoggedIn(false);
+          setLoggedUserId(data.userId);
+          setLoggedUser(data.user);
+          setloggedPublisher(null);
+          setloggedPublisherId(null);
+        } else if (data.role === 'publisher') {
+          setisPublisherLoggedIn(true);
+          setisUserLoggedIn(false);
+          setloggedPublisherId(data.publisherId);
+          setloggedPublisher(data.publisher);
+          setLoggedUser(null);
+          setLoggedUserId(null);
+        }
+      } catch (err) {
+        console.error('Auth error:', err);
+        localStorage.removeItem('token');
+        setToken(null);
+        setisUserLoggedIn(false);
+        setisPublisherLoggedIn(false);
+        setLoggedUser(null);
+        setloggedPublisher(null);
+        setLoggedUserId(null);
+        setloggedPublisherId(null);
+      }
+    };
 
-  // Reset loggedUser when user logs out
-  useEffect(() => {
-    if (!isUserLoggedIn) {
-      setLoggedUserId(101);
-    }
-  }, [isUserLoggedIn]);
+    checkAuth();
+  }, [token]);
 
-  // Reset loggedPublisher when publisher logs out
-  useEffect(() => {
-    if (!isPublisherLoggedIn) {
-      setloggedPublisherId(1);
-    }
-  }, [isPublisherLoggedIn]);
-
-  // If user logs in, log out publisher
-  useEffect(() => {
-    if (isUserLoggedIn) {
-      setisPublisherLoggedIn(false);
-    }
-  }, [isUserLoggedIn]);
-
-  // If publisher logs in, log out user
-  useEffect(() => {
-    if (isPublisherLoggedIn) {
-      setisUserLoggedIn(false);
-    }
-  }, [isPublisherLoggedIn]);
-
-  // Function to check if the date string matches the selected date
-  const isSameDate = (dateStr, selectedDate) => {
-    const [day, month, year] = dateStr.split("-");
-    const d = new Date(`${year}-${month}-${day}`);
-    return (
-      d.getDate() === selectedDate.getDate() &&
-      d.getMonth() === selectedDate.getMonth() &&
-      d.getFullYear() === selectedDate.getFullYear()
-    );
-  };
-  // Filter articles to get the top three based on engagement votes for the selected date and region
-
+  // Calculate popular articles
   useEffect(() => {
     const topThree = articles
       .filter((article) => isSameDate(article.date, selectedDate))
       .filter((article) => {
-        // If "all" is selected, show all articles
-        if (selectedRegion.includes("all")) {
-          return true;
-        }
-        // Otherwise, show articles matching any selected region
+        if (selectedRegion.includes("all")) return true;
         return selectedRegion.includes(article.region);
       })
       .sort(
@@ -123,63 +201,80 @@ export const ArticleProvider = ({ children }) => {
     setpopular(topThree);
   }, [articles, selectedDate, selectedRegion]);
 
-  useEffect(() => {
-    console.log("Articles updated:", articles);
-    console.log("Region available updated:", regionAvailable);
-    console.log("Selected date updated:", selectedDate);
-    console.log("Selected region updated:", selectedRegion);
-    console.log("Publisher array updated:", publisherArray);
-    console.log("User array updated:", userArray);
-    console.log("Logged User:", loggedUser);
-    console.log("Logged Publisher:", loggedPublisher);
-  }, [
-    articles,
-    regionAvailable,
-    selectedDate,
-    selectedRegion,
-    publisherArray,
-    userArray,
-    loggedUser,
-    loggedPublisher,
-  ]);
+  // Helper function for date comparison
+  const isSameDate = (dateStr, selectedDate) => {
+    const [day, month, year] = dateStr.split("-");
+    const d = new Date(`${year}-${month}-${day}`);
+    return (
+      d.getDate() === selectedDate.getDate() &&
+      d.getMonth() === selectedDate.getMonth() &&
+      d.getFullYear() === selectedDate.getFullYear()
+    );
+  };
+
+  // Logout function
+  const logout = () => {
+    localStorage.removeItem('token');
+    setToken(null);
+    setisUserLoggedIn(false);
+    setisPublisherLoggedIn(false);
+    setLoggedUser(null);
+    setloggedPublisher(null);
+    setLoggedUserId(null);
+    setloggedPublisherId(null);
+  };
+
+  // Custom setToken function that also updates localStorage
+  const updateToken = (newToken) => {
+    if (newToken) {
+      localStorage.setItem('token', newToken);
+    } else {
+      localStorage.removeItem('token');
+    }
+    setToken(newToken);
+  };
 
   const value = {
     articles,
     setArticles,
-    regionAvailable,
-    setregionAvailable,
-    selectedDate,
-    setSelectedDate,
-    selectedRegion,
-    setSelectedRegion,
     publisherArray,
     setpublisherArray,
     userArray,
     setuserArray,
+    selectedDate,
+    setSelectedDate,
+    regionAvailable,
+    setregionAvailable,
+    selectedRegion,
+    setSelectedRegion,
     modal,
     setmodal,
     deleteArticle,
     setdeleteArticle,
-    loggedPublisherId,
-    loggedPublisher,
     isUserLoggedIn,
     setisUserLoggedIn,
     isPublisherLoggedIn,
     setisPublisherLoggedIn,
-    popular,
-    setpopular,
     loggedUserId,
     setLoggedUserId,
+    loggedPublisherId,
+    setloggedPublisherId,
     loggedUser,
     setLoggedUser,
     loggedPublisher,
     setloggedPublisher,
-    loggedPublisherId,
-    setloggedPublisherId,
+    token,
+    setToken,
+    updateToken,
+    logout,
+    popular,
+    loading,
+    error,
+    fetchArticles,
   };
 
   return (
-    <articleContext.Provider value={{ ...value }}>
+    <articleContext.Provider value={value}>
       {children}
     </articleContext.Provider>
   );

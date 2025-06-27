@@ -33,39 +33,84 @@ const UserLogin = () => {
   } = useForm();
 
   // Function to handle new user data during sign-up
-  const newData = (data) => {
-    const userObj = {
-      userId: Date.now(), // unique id
-      name: data.name,
-      email: data.email,
-      password: data.password,
-      preferredRegions: (data.preferredRegions || []).map((r) => r.value),
-    };
+  const newData = async (data) => {
+    try {
+      setErrorMsg(''); // Clear any previous errors
+      const response = await fetch('/api/auth/user-register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: data.name,
+          email: data.email,
+          password: data.password,
+          preferredRegions: data.preferredRegions ? data.preferredRegions.map((r) => r.value) : [],
+        }),
+      });
 
-    setuserArray((prevUsers) => [...prevUsers, userObj]);
-    setisUserLoggedIn(true); // Set user as logged in
-    setLoggedUserId(userObj.userId); // Set logged user id
-    setLoggedUser(userObj); // Set logged user object
-    console.log("New User Data:", userObj);
-    navigate("/"); // Redirect to home
+      // First check if the response is ok
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (errorData.errors && Array.isArray(errorData.errors)) {
+          // Join multiple validation errors into a single message
+          throw new Error(errorData.errors.join(', '));
+        }
+        throw new Error(errorData.message || 'Error during registration');
+      }
+
+      const result = await response.json();
+
+      // Set user as logged in
+      setisUserLoggedIn(true);
+      setLoggedUserId(result.user.id);
+      setLoggedUser(result.user);
+      
+      // Store the token
+      localStorage.setItem('token', result.token);
+      
+      navigate('/');
+    } catch (error) {
+      console.error('Registration error:', error);
+      setErrorMsg(error.message || 'Error connecting to the server. Please try again.');
+    }
   };
 
   // Function to validate user data during sign-in
-  const validateData = (data) => {
-    const matchedUser = userArray.find((user) => user.email === data.email);
-    if (matchedUser) {
-      if (data.password === matchedUser.password) {
-        setisUserLoggedIn(true); // Set user as logged in
-        setLoggedUserId(matchedUser.userId); // Set logged user id
-        setLoggedUser(matchedUser); // Set logged user object
-        setErrorMsg("");
-        console.log("Validation Data:", data);
-        navigate("/"); // Redirect to home
-      } else {
-        setErrorMsg("Incorrect password. Please try again.");
+  const validateData = async (data) => {
+    try {
+      setErrorMsg(''); // Clear any previous errors
+      const response = await fetch('/api/auth/user-login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+        }),
+      });
+
+      // First check if the response is ok
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Invalid credentials');
       }
-    } else {
-      setErrorMsg("User does not exist. Please sign up first.");
+
+      const result = await response.json();
+
+      // Set user as logged in
+      setisUserLoggedIn(true);
+      setLoggedUserId(result.user.id);
+      setLoggedUser(result.user);
+      
+      // Store the token
+      localStorage.setItem('token', result.token);
+      
+      navigate('/');
+    } catch (error) {
+      console.error('Login error:', error);
+      setErrorMsg(error.message || 'Error connecting to the server. Please try again.');
     }
   };
 
@@ -209,8 +254,8 @@ const UserLogin = () => {
                   {...register("password", {
                     required: { value: true, message: "Password is required" },
                     minLength: {
-                      value: 6,
-                      message: "Password should be at least 6 characters long",
+                      value: 8,
+                      message: "Password must be at least 8 characters long",
                     },
                   })}
                 />
@@ -222,12 +267,12 @@ const UserLogin = () => {
               <div>
                 <label className="flex items-center gap-2 text-sm font-semibold text-neutral-700 mb-2">
                   <MapPin className="w-4 h-4" />
-                  Preferred Regions
+                  Preferred Regions (Optional)
                 </label>
                 <Controller
                   name="preferredRegions"
                   control={control}
-                  rules={{ required: "Please select at least one region" }}
+                  defaultValue={[]}
                   render={({ field }) => (
                     <Select
                       {...field}
@@ -238,9 +283,9 @@ const UserLogin = () => {
                     />
                   )}
                 />
-                {errors.preferredRegions && (
-                  <p className="text-accent-600 text-sm mt-1">{errors.preferredRegions.message}</p>
-                )}
+                <p className="text-neutral-500 text-sm mt-1">
+                  You can select regions to customize your news feed
+                </p>
               </div>
 
               <button
