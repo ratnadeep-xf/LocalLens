@@ -32,19 +32,7 @@ const AddArticle = () => {
     formState: { errors },
   } = useForm();
 
-  // Redirect if not logged in as publisher
-  useEffect(() => {
-    if (!token || !isPublisherLoggedIn) {
-      navigate('/publisher/login');
-    }
-  }, [token, isPublisherLoggedIn, navigate]);
 
-  // Redirect if no publisher data
-  useEffect(() => {
-    if (!loggedPublisher || !loggedPublisherId) {
-      navigate('/publisher/login');
-    }
-  }, [loggedPublisher, loggedPublisherId, navigate]);
 
   const selectedRegions = useWatch({
     control,
@@ -54,18 +42,6 @@ const AddArticle = () => {
   const onSubmit = async (data) => {
     try {
       setSubmitError(null);
-
-      // Validate authentication
-      if (!token || !isPublisherLoggedIn) {
-        navigate('/publisher/login');
-        throw new Error('Authentication required. Please log in again.');
-      }
-
-      // Validate publisher data
-      if (!loggedPublisher || !loggedPublisherId) {
-        navigate('/publisher/login');
-        throw new Error('Publisher information not found. Please log in again.');
-      }
 
       // Handle region selection
       let region;
@@ -103,18 +79,21 @@ const AddArticle = () => {
       }
 
       // Create article
+      const formData = new FormData();
+      formData.append('title', data.title.trim());
+      formData.append('content', data.content.trim());
+      formData.append('region', region);
+      
+      if (data.image && data.image[0]) {
+        formData.append('image', data.image[0]);
+      }
+
       const response = await fetch('/api/articles', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          title: data.title.trim(),
-          content: data.content.trim(),
-          region: region,
-          img: imageUrl
-        }),
+        body: formData
       });
 
       if (!response.ok) {

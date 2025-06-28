@@ -5,7 +5,7 @@ export const articleContext = createContext();
 
 export const ArticleProvider = ({ children }) => {
   // Authentication states
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [token, setToken] = useState(localStorage.getItem("token"));
   const [isUserLoggedIn, setisUserLoggedIn] = useState(false);
   const [isPublisherLoggedIn, setisPublisherLoggedIn] = useState(false);
 
@@ -17,8 +17,10 @@ export const ArticleProvider = ({ children }) => {
 
   // UI states
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [regionAvailable, setregionAvailable] = useState([{ value: 'all', label: 'All Regions' }]);
-  const [selectedRegion, setSelectedRegion] = useState(['all']);
+  const [regionAvailable, setregionAvailable] = useState([
+    { value: "all", label: "All Regions" },
+  ]);
+  const [selectedRegion, setSelectedRegion] = useState(["all"]);
   const [modal, setmodal] = useState(false);
   const [deleteArticle, setdeleteArticle] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -36,66 +38,49 @@ export const ArticleProvider = ({ children }) => {
       setLoading(true);
       setError(null);
 
-      // Convert selected date to backend format (dd-mm-yyyy)
-      const formattedDate = selectedDate ? 
-        `${String(selectedDate.getDate()).padStart(2, '0')}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${selectedDate.getFullYear()}` : 
-        null;
-
-      // Build query string
-      const params = new URLSearchParams();
-      
-      // Only add region if it's not 'all'
-      if (selectedRegion && selectedRegion.length > 0) {
-        const region = Array.isArray(selectedRegion) ? selectedRegion[0] : selectedRegion;
-        if (region !== 'all') {
-          params.append('region', region);
-        }
-      }
-
-      if (formattedDate) {
-        params.append('date', formattedDate);
-      }
-
-      const url = `/api/articles${params.toString() ? `?${params.toString()}` : ''}`;
-      console.log('Fetching articles from:', url);
-      console.log('Current filters:', { selectedRegion, formattedDate });
-
-      const response = await fetch(url, {
+      const response = await fetch("/api/articles", {
         headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` })
-        }
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
       });
 
-      console.log('Response status:', response.status);
+      console.log("Response status:", response.status);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        throw new Error(
+          errorData.message || `HTTP error! status: ${response.status}`
+        );
       }
 
       const data = await response.json();
-      console.log('Received articles:', data.length);
+      console.log("Received articles:", data.length);
 
       if (!Array.isArray(data)) {
-        throw new Error('Invalid data format received from server');
+        throw new Error("Invalid data format received from server");
       }
 
       setArticles(data);
       setError(null);
     } catch (err) {
-      console.error('Error fetching articles:', err);
-      setError(err.message || 'Failed to fetch articles');
+      console.error("Error fetching articles:", err);
+      setError(err.message || "Failed to fetch articles");
       setArticles([]); // Reset articles on error
     } finally {
       setLoading(false);
     }
   };
 
+  // Log articles whenever they change
+  useEffect(() => {
+    console.log("Articles updated:", articles);
+  }, [articles]);
+
   // Sync token with localStorage
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
+    const storedToken = localStorage.getItem("token");
     if (storedToken !== token) {
       setToken(storedToken);
     }
@@ -104,9 +89,9 @@ export const ArticleProvider = ({ children }) => {
   // Update localStorage when token changes
   useEffect(() => {
     if (token) {
-      localStorage.setItem('token', token);
+      localStorage.setItem("token", token);
     } else {
-      localStorage.removeItem('token');
+      localStorage.removeItem("token");
     }
   }, [token]);
 
@@ -117,7 +102,9 @@ export const ArticleProvider = ({ children }) => {
 
   // Extract unique regions from articles
   useEffect(() => {
-    const uniqueRegions = [...new Set(articles.map((article) => article.region))];
+    const uniqueRegions = [
+      ...new Set(articles.map((article) => article.region)),
+    ];
     const initialRegions = uniqueRegions.map((region) => ({
       value: region,
       label: region.charAt(0).toUpperCase() + region.slice(1),
@@ -141,26 +128,26 @@ export const ArticleProvider = ({ children }) => {
       }
 
       try {
-        const response = await fetch('/api/auth/verify', {
+        const response = await fetch("/api/auth/verify", {
           headers: {
-            'Authorization': `Bearer ${token}`
-          }
+            Authorization: `Bearer ${token}`,
+          },
         });
 
         if (!response.ok) {
-          throw new Error('Invalid token');
+          throw new Error("Invalid token");
         }
 
         const data = await response.json();
-        
-        if (data.role === 'reader') {
+
+        if (data.role === "reader") {
           setisUserLoggedIn(true);
           setisPublisherLoggedIn(false);
           setLoggedUserId(data.userId);
           setLoggedUser(data.user);
           setloggedPublisher(null);
           setloggedPublisherId(null);
-        } else if (data.role === 'publisher') {
+        } else if (data.role === "publisher") {
           setisPublisherLoggedIn(true);
           setisUserLoggedIn(false);
           setloggedPublisherId(data.publisherId);
@@ -169,8 +156,8 @@ export const ArticleProvider = ({ children }) => {
           setLoggedUserId(null);
         }
       } catch (err) {
-        console.error('Auth error:', err);
-        localStorage.removeItem('token');
+        console.error("Auth error:", err);
+        localStorage.removeItem("token");
         setToken(null);
         setisUserLoggedIn(false);
         setisPublisherLoggedIn(false);
@@ -184,23 +171,6 @@ export const ArticleProvider = ({ children }) => {
     checkAuth();
   }, [token]);
 
-  // Calculate popular articles
-  useEffect(() => {
-    const topThree = articles
-      .filter((article) => isSameDate(article.date, selectedDate))
-      .filter((article) => {
-        if (selectedRegion.includes("all")) return true;
-        return selectedRegion.includes(article.region);
-      })
-      .sort(
-        (a, b) =>
-          (b.engagement.upVotes - b.engagement.downVotes) -
-          (a.engagement.upVotes - a.engagement.downVotes)
-      )
-      .slice(0, 3);
-    setpopular(topThree);
-  }, [articles, selectedDate, selectedRegion]);
-
   // Helper function for date comparison
   const isSameDate = (dateStr, selectedDate) => {
     const [day, month, year] = dateStr.split("-");
@@ -212,9 +182,27 @@ export const ArticleProvider = ({ children }) => {
     );
   };
 
+  // Calculate popular articles
+  useEffect(() => {
+    const topThree = articles
+      .filter((article) => isSameDate(article.date, selectedDate))
+      .filter((article) => {
+        if (selectedRegion.includes("all")) return true;
+        return selectedRegion.includes(article.region);
+      })
+      .sort(
+        (a, b) =>
+          b.engagement.upVotes -
+          b.engagement.downVotes -
+          (a.engagement.upVotes - a.engagement.downVotes)
+      )
+      .slice(0, 3);
+    setpopular(topThree);
+  }, [articles, selectedDate, selectedRegion]);
+
   // Logout function
   const logout = () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem("token");
     setToken(null);
     setisUserLoggedIn(false);
     setisPublisherLoggedIn(false);
@@ -227,9 +215,9 @@ export const ArticleProvider = ({ children }) => {
   // Custom setToken function that also updates localStorage
   const updateToken = (newToken) => {
     if (newToken) {
-      localStorage.setItem('token', newToken);
+      localStorage.setItem("token", newToken);
     } else {
-      localStorage.removeItem('token');
+      localStorage.removeItem("token");
     }
     setToken(newToken);
   };
@@ -274,8 +262,6 @@ export const ArticleProvider = ({ children }) => {
   };
 
   return (
-    <articleContext.Provider value={value}>
-      {children}
-    </articleContext.Provider>
+    <articleContext.Provider value={value}>{children}</articleContext.Provider>
   );
 };

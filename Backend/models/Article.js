@@ -6,16 +6,17 @@ const articleSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Title is required'],
     trim: true,
-    maxlength: [100, 'Title should be less than 100 characters']
+    maxlength: [100, 'Title should be less than 100 characters'],
+    index: false // Explicitly disable indexing
   },
   content: {
     type: String,
     required: [true, 'Content is required'],
     minlength: [50, 'Content should be at least 50 characters long']
   },
-  img: {
-    type: String,
-    default: undefined
+  image: {
+    data: Buffer,
+    contentType: String
   },
   region: {
     type: String,
@@ -23,7 +24,14 @@ const articleSchema = new mongoose.Schema({
   },
   date: {
     type: String,
-    required: [true, 'Date is required']
+    required: [true, 'Date is required'],
+    validate: {
+      validator: function(v) {
+        // Validate dd-mm-yyyy format
+        return /^\d{2}-\d{2}-\d{4}$/.test(v);
+      },
+      message: props => `${props.value} is not a valid date format! Use dd-mm-yyyy`
+    }
   },
   publisher: {
     type: mongoose.Schema.Types.ObjectId,
@@ -87,8 +95,15 @@ const articleSchema = new mongoose.Schema({
 
 // Virtual for formatted date
 articleSchema.virtual('formattedDate').get(function() {
-  const date = new Date(this.date);
-  return `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()}`;
+  return this.date; // Already in dd-mm-yyyy format
+});
+
+// Virtual for base64 image
+articleSchema.virtual('imageUrl').get(function() {
+  if (this.image && this.image.data && this.image.contentType) {
+    return `data:${this.image.contentType};base64,${this.image.data.toString('base64')}`;
+  }
+  return '/default-image.png';
 });
 
 // Middleware to update comment and vote counts
@@ -125,10 +140,19 @@ const dropIndexes = async () => {
   }
 };
 
-// Call dropIndexes when the model is compiled
+// Call dropIndexes when the model is compiled and when the application starts
 articleSchema.post('compile', () => {
   dropIndexes();
 });
+
+// Also drop indexes immediately when this file is required
+if (mongoose.connection.readyState === 1) { // If already connected
+  dropIndexes();
+} else {
+  mongoose.connection.once('connected', () => {
+    dropIndexes();
+  });
+}
 
 const Article = mongoose.model('Article', articleSchema);
 

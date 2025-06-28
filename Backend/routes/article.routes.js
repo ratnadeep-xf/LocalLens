@@ -3,28 +3,30 @@ const router = express.Router();
 const { Article } = require('../models');
 const auth = require('../middleware/auth');
 const { v4: uuidv4 } = require('uuid');
+const multer = require('multer');
+
+// Configure multer for memory storage
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Accept images only
+    if (!file.mimetype.startsWith('image/')) {
+      return cb(new Error('Only image files are allowed!'), false);
+    }
+    cb(null, true);
+  }
+});
 
 // Base path: /api/articles
 
-// Get all articles with optional filters
+// Get all articles
 router.get('/', async (req, res) => {
   try {
-    const { region, date } = req.query;
-    let query = {};
-
-    console.log('Query params:', { region, date });
-
-    // Only add region filter if it's defined and not 'all'
-    if (region && region !== 'all' && region !== 'undefined') {
-      query.region = region;
-    }
-    if (date) {
-      query.date = date;
-    }
-
-    console.log('MongoDB query:', query);
-
-    const articles = await Article.find(query)
+    const articles = await Article.find()
       .sort({ createdAt: -1 });
 
     console.log('Found articles:', articles.length);
@@ -34,7 +36,7 @@ router.get('/', async (req, res) => {
       id: article._id,
       title: article.title,
       content: article.content,
-      img: article.img,
+      img: article.imageUrl, // Use the virtual getter
       region: article.region,
       date: article.formattedDate,
       publisher: article.publisherName,
@@ -50,39 +52,11 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get single article
-router.get('/:id', async (req, res) => {
-  try {
-    const article = await Article.findById(req.params.id)
-      .populate('publisher', 'agencyName');
-    
-    if (!article) {
-      return res.status(404).json({ message: 'Article not found' });
-    }
-
-    // Transform the response to match frontend expectations
-    const transformedArticle = {
-      id: article._id,
-      title: article.title,
-      content: article.content,
-      img: article.img,
-      region: article.region,
-      date: article.formattedDate,
-      publisher: article.publisherName,
-      engagement: article.engagement
-    };
-
-    res.json(transformedArticle);
-  } catch (error) {
-    console.error('Error fetching article:', error);
-    res.status(500).json({ message: 'Error fetching article', error: error.message });
-  }
-});
 
 // Create article (Publisher only)
-router.post('/', auth.isPublisher, async (req, res) => {
+router.post('/', auth.isPublisher, upload.single('image'), async (req, res) => {
   try {
-    const { title, content, img, region } = req.body;
+    const { title, content, region } = req.body;
 
     // Validate required fields
     if (!title?.trim()) {
@@ -103,25 +77,12 @@ router.post('/', auth.isPublisher, async (req, res) => {
       return res.status(400).json({ message: 'Content should be at least 50 characters long' });
     }
 
-    // Check for duplicate article by this publisher
-    const existingArticle = await Article.findOne({
-      publisher: req.publisher._id,
-      title: title.trim()
-    });
-
-    if (existingArticle) {
-      return res.status(400).json({
-        message: 'You have already published an article with this title'
-      });
-    }
-
     // Create article
     const article = new Article({
       title: title.trim(),
       content: content.trim(),
-      img: img || '/default-image.png',
       region: region.trim(),
-      date: new Date().toLocaleDateString('en-GB').split('/').join('-'), // dd-mm-yyyy
+      date: new Date().toISOString().split('T')[0].split('-').reverse().join('-'),
       publisher: req.publisher._id,
       publisherName: req.publisher.agencyName,
       engagement: {
@@ -132,6 +93,14 @@ router.post('/', auth.isPublisher, async (req, res) => {
         commentsArray: []
       }
     });
+
+    // Add image if provided
+    if (req.file) {
+      article.image = {
+        data: req.file.buffer,
+        contentType: req.file.mimetype
+      };
+    }
 
     // Save article
     const savedArticle = await article.save();
@@ -144,7 +113,7 @@ router.post('/', auth.isPublisher, async (req, res) => {
       id: savedArticle._id,
       title: savedArticle.title,
       content: savedArticle.content,
-      img: savedArticle.img,
+      img: savedArticle.imageUrl, // Use the virtual getter
       region: savedArticle.region,
       date: savedArticle.formattedDate,
       publisher: savedArticle.publisherName,
@@ -159,12 +128,6 @@ router.post('/', auth.isPublisher, async (req, res) => {
       return res.status(400).json({
         message: 'Validation error',
         error: Object.values(error.errors).map(err => err.message).join(', ')
-      });
-    }
-    // Check for duplicate key errors
-    if (error.code === 11000) {
-      return res.status(400).json({
-        message: 'You have already published an article with this title'
       });
     }
     res.status(500).json({ message: 'Error creating article', error: error.message });
@@ -233,7 +196,7 @@ router.post('/:id/vote', auth.isUser, async (req, res) => {
       id: article._id,
       title: article.title,
       content: article.content,
-      img: article.img,
+      img: article.imageUrl, // Use the virtual getter
       region: article.region,
       date: article.formattedDate,
       publisher: article.publisherName,
@@ -271,7 +234,7 @@ router.post('/:id/comment', auth.isUser, async (req, res) => {
       id: article._id,
       title: article.title,
       content: article.content,
-      img: article.img,
+      img: article.imageUrl, // Use the virtual getter
       region: article.region,
       date: article.formattedDate,
       publisher: article.publisherName,

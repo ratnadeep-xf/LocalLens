@@ -4,7 +4,16 @@ import { format } from "date-fns";
 import { articleContext } from "../context/articleContext";
 
 const Engagement = ({ article }) => {
-  const { userArray, articles, setArticles, loggedUserId, isUserLoggedIn, token } = useContext(articleContext);
+  const { 
+    userArray, 
+    articles, 
+    setArticles, 
+    loggedUserId, 
+    isUserLoggedIn, 
+    token, 
+    logout,
+    loggedUser 
+  } = useContext(articleContext);
   const [userVote, setUserVote] = useState(null);
   const [newComment, setnewComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,8 +35,18 @@ const Engagement = ({ article }) => {
   }, [latestArticle.engagement.votesArray, loggedUserId]);
 
   const handleVote = async (voteType) => {
-    if (!isUserLoggedIn) return;
+    if (!isUserLoggedIn || !loggedUser) {
+      setError("Please log in as a reader to vote");
+      return;
+    }
     if (isSubmitting) return;
+    
+    // Check token after confirming user is logged in
+    if (!token) {
+      setError("Authentication token is missing. Please log in again.");
+      logout(); // Force logout if token is missing
+      return;
+    }
 
     try {
       setIsSubmitting(true);
@@ -66,6 +85,10 @@ const Engagement = ({ article }) => {
     } catch (err) {
       setError(err.message);
       console.error('Error casting vote:', err);
+      if (err.message === 'Invalid token') {
+        // Handle token expiration
+        logout();
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -73,6 +96,16 @@ const Engagement = ({ article }) => {
 
   const handleClick = async () => {
     if (!isUserLoggedIn || !newComment.trim() || isSubmitting) return;
+    
+    if (!token) {
+      setError("Please log in to comment");
+      return;
+    }
+    
+    if (!isUserLoggedIn) {
+      setError("Only readers can post comments. Please log in as a reader.");
+      return;
+    }
 
     try {
       setIsSubmitting(true);
@@ -91,6 +124,10 @@ const Engagement = ({ article }) => {
 
       if (!response.ok) {
         const errorData = await response.json();
+        if (errorData.message === 'Token has expired' || errorData.message === 'Invalid token') {
+          logout(); // Clear the invalid session
+          throw new Error('Your session has expired. Please log in again.');
+        }
         throw new Error(errorData.message || 'Failed to post comment');
       }
 
@@ -124,7 +161,7 @@ const Engagement = ({ article }) => {
             {error}
           </div>
         )}
-        {isUserLoggedIn ? (
+        {isUserLoggedIn && loggedUser ? (
           <div className="flex items-center justify-center space-x-8">
             <div className="text-center">
               <button
@@ -168,7 +205,7 @@ const Engagement = ({ article }) => {
           </div>
         ) : (
           <div className="text-center py-8 bg-neutral-50 rounded-lg">
-            <p className="text-neutral-500">Please log in to vote on this article.</p>
+            <p className="text-neutral-500">Please log in as a reader to vote on this article.</p>
           </div>
         )}
       </div>
@@ -185,9 +222,9 @@ const Engagement = ({ article }) => {
 
         <div className="space-y-4 mb-6">
           {latestArticle.engagement.commentsArray.length > 0 ? (
-            latestArticle.engagement.commentsArray.map((comment) => (
+            latestArticle.engagement.commentsArray.map((comment, index) => (
               <div
-                key={comment.commentId}
+                key={`${comment.userId}-${comment.createdAt}-${index}`}
                 className="border-b border-neutral-100 pb-4 last:border-b-0 last:pb-0"
               >
                 <div className="flex items-start space-x-3">
@@ -199,12 +236,7 @@ const Engagement = ({ article }) => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2 mb-1">
                       <span className="text-sm font-semibold text-neutral-900">
-                        {(() => {
-                          const user = userArray.find(
-                            (u) => u.userId === comment.userId
-                          );
-                          return user ? user.name : "Anonymous User";
-                        })()}
+                        {comment.userId === loggedUserId ? loggedUser.name : "Anonymous User"}
                       </span>
                       <span className="text-xs text-neutral-500">
                         {format(new Date(comment.createdAt), "MMM d, h:mm a")}

@@ -11,28 +11,62 @@ const ArticleCard = ({
   isDashboard = false,
 }) => {
   const navigate = useNavigate();
+  const { modal, setmodal, deleteArticle, setdeleteArticle, setArticles, token } = useContext(articleContext);
+  const [error, setError] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const handleClick = () => {
     // Handle click event, e.g., navigate to article details page
     console.log(`Navigating to article: ${article.title}`);
     navigate(`/article/${article.id}`, { state: { article } });
   };
 
-  const { modal, setmodal, deleteArticle, setdeleteArticle, setArticles } = useContext(articleContext);
   const togglemodal = () => {
     setmodal(!modal);
+    setError(null); // Clear any previous errors when toggling modal
   };
 
   useEffect(() => {
-    if (deleteArticle) {
-      const handleDelete = () => {
-        setArticles((prevArticles) =>
-          prevArticles.filter((a) => a.id !== article.id)
-        );
-        setdeleteArticle(false);
-      };
+    if (deleteArticle && !isDeleting) {
       handleDelete();
     }
   }, [deleteArticle]);
+
+  const handleDelete = async () => {
+    if (!token) {
+      setError("Authentication required");
+      setdeleteArticle(false);
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      const response = await fetch(`/api/articles/${article.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete article');
+      }
+
+      // Remove article from state after successful deletion
+      setArticles((prevArticles) =>
+        prevArticles.filter((a) => a.id !== article.id)
+      );
+      
+      setError(null);
+    } catch (err) {
+      console.error('Error deleting article:', err);
+      setError(err.message);
+    } finally {
+      setIsDeleting(false);
+      setdeleteArticle(false);
+    }
+  };
 
   return (
     <div className="group">
@@ -45,7 +79,7 @@ const ArticleCard = ({
         {/* Background Image */}
         <div className="relative h-48 sm:h-56 overflow-hidden">
           <img
-            src={article.img || "/default-background.png"}
+            src={article.img || article.imageUrl || "/default-background.png"}
             alt={article.title}
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
@@ -67,6 +101,7 @@ const ArticleCard = ({
                 e.stopPropagation();
                 togglemodal();
               }}
+              disabled={isDeleting}
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -114,7 +149,7 @@ const ArticleCard = ({
           </div>
         </div>
       </div>
-      {modal && <DeleteModal />}
+      {modal && <DeleteModal error={error} isDeleting={isDeleting} />}
     </div>
   );
 };
