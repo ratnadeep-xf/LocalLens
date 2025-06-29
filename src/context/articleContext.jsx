@@ -95,11 +95,6 @@ export const ArticleProvider = ({ children }) => {
     }
   }, [token]);
 
-  // Fetch articles whenever filters change
-  useEffect(() => {
-    fetchArticles();
-  }, [selectedDate, selectedRegion, token]); // Add filter dependencies
-
   // Extract unique regions from articles
   useEffect(() => {
     const uniqueRegions = [
@@ -117,20 +112,25 @@ export const ArticleProvider = ({ children }) => {
   // Handle authentication state
   useEffect(() => {
     const checkAuth = async () => {
-      if (!token) {
+      const storedToken = localStorage.getItem("token");
+      
+      // If no token, clear all auth states
+      if (!storedToken) {
+        setToken(null);
         setisUserLoggedIn(false);
         setisPublisherLoggedIn(false);
         setLoggedUser(null);
         setloggedPublisher(null);
         setLoggedUserId(null);
         setloggedPublisherId(null);
+        console.log("Auth State: No token, cleared all auth states");
         return;
       }
 
       try {
         const response = await fetch("/api/auth/verify", {
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${storedToken}`,
           },
         });
 
@@ -140,23 +140,39 @@ export const ArticleProvider = ({ children }) => {
 
         const data = await response.json();
 
+        // Set token first
+        setToken(storedToken);
+
         if (data.role === "reader") {
-          setisUserLoggedIn(true);
-          setisPublisherLoggedIn(false);
+          // Set reader states
           setLoggedUserId(data.userId);
           setLoggedUser(data.user);
+          setisUserLoggedIn(true);
+          // Clear publisher states
+          setisPublisherLoggedIn(false);
           setloggedPublisher(null);
           setloggedPublisherId(null);
+          console.log("Auth State: Reader authenticated", {
+            userId: data.userId,
+            isUserLoggedIn: true
+          });
         } else if (data.role === "publisher") {
-          setisPublisherLoggedIn(true);
-          setisUserLoggedIn(false);
+          // Set publisher states
           setloggedPublisherId(data.publisherId);
           setloggedPublisher(data.publisher);
+          setisPublisherLoggedIn(true);
+          // Clear reader states
+          setisUserLoggedIn(false);
           setLoggedUser(null);
           setLoggedUserId(null);
+          console.log("Auth State: Publisher authenticated", {
+            publisherId: data.publisherId,
+            isPublisherLoggedIn: true
+          });
         }
       } catch (err) {
         console.error("Auth error:", err);
+        // Clear everything on auth error
         localStorage.removeItem("token");
         setToken(null);
         setisUserLoggedIn(false);
@@ -165,6 +181,9 @@ export const ArticleProvider = ({ children }) => {
         setloggedPublisher(null);
         setLoggedUserId(null);
         setloggedPublisherId(null);
+        console.log("Auth State: Error occurred, cleared all auth states", {
+          error: err.message
+        });
       }
     };
 
@@ -202,24 +221,41 @@ export const ArticleProvider = ({ children }) => {
 
   // Logout function
   const logout = () => {
+    console.log("Logout: Starting logout process");
+    // Clear token from localStorage
     localStorage.removeItem("token");
     setToken(null);
+    
+    // Reset all auth-related states
     setisUserLoggedIn(false);
     setisPublisherLoggedIn(false);
     setLoggedUser(null);
     setloggedPublisher(null);
     setLoggedUserId(null);
     setloggedPublisherId(null);
+    
+    console.log("Logout: Completed, all states cleared");
   };
 
   // Custom setToken function that also updates localStorage
   const updateToken = (newToken) => {
+    console.log("Token Update: Processing new token");
     if (newToken) {
       localStorage.setItem("token", newToken);
+      setToken(newToken);
+      console.log("Token Update: New token set");
     } else {
       localStorage.removeItem("token");
+      setToken(null);
+      // Also reset auth states when token is cleared
+      setisUserLoggedIn(false);
+      setisPublisherLoggedIn(false);
+      setLoggedUser(null);
+      setloggedPublisher(null);
+      setLoggedUserId(null);
+      setloggedPublisherId(null);
+      console.log("Token Update: Token cleared, reset all auth states");
     }
-    setToken(newToken);
   };
 
   const value = {

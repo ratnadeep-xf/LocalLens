@@ -1,19 +1,13 @@
-import React, { useContext } from "react";
-import { articleContext } from "../context/articleContext";
+import React from "react";
 import { AlertTriangle, X, Loader2 } from "lucide-react";
 
-const DeleteModal = ({ error, isDeleting }) => {
-  const { setmodal, modal, setdeleteArticle } = useContext(articleContext);
-  
-  const togglemodal = () => {
-    setmodal(!modal);
-  };
-  
+const DeleteModal = ({ error, isDeleting, onDelete, onCancel }) => {
   return (
     <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
       onClick={(e) => {
-        return e.stopPropagation(), togglemodal();
+        e.stopPropagation();
+        onCancel();
       }}
     >
       <div
@@ -28,7 +22,7 @@ const DeleteModal = ({ error, isDeleting }) => {
             <h2 className="text-xl font-semibold text-neutral-900">Delete Article</h2>
           </div>
           <button
-            onClick={togglemodal}
+            onClick={onCancel}
             className="text-neutral-400 hover:text-neutral-600 transition-colors duration-200"
             disabled={isDeleting}
           >
@@ -50,16 +44,14 @@ const DeleteModal = ({ error, isDeleting }) => {
         <div className="flex justify-end gap-3">
           <button
             className="px-4 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={togglemodal}
+            onClick={onCancel}
             disabled={isDeleting}
           >
             Cancel
           </button>
           <button
             className="flex items-center gap-2 px-4 py-2 bg-accent-600 hover:bg-accent-700 text-white font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={() => {
-              return setdeleteArticle(true), togglemodal();
-            }}
+            onClick={onDelete}
             disabled={isDeleting}
           >
             {isDeleting ? (

@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from "react";
+import React, { useState, useContext } from "react";
 import { ArrowUp, ArrowDown, MessageCircle, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
@@ -11,60 +11,70 @@ const ArticleCard = ({
   isDashboard = false,
 }) => {
   const navigate = useNavigate();
-  const { modal, setmodal, deleteArticle, setdeleteArticle, setArticles, token } = useContext(articleContext);
+  const {
+    setArticles,
+    token,
+    isPublisherLoggedIn
+  } = useContext(articleContext);
+  
   const [error, setError] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   const handleClick = () => {
-    // Handle click event, e.g., navigate to article details page
     console.log(`Navigating to article: ${article.title}`);
     navigate(`/article/${article.id}`, { state: { article } });
   };
 
-  const togglemodal = () => {
-    setmodal(!modal);
+  const toggleModal = () => {
+    setShowModal(!showModal);
     setError(null); // Clear any previous errors when toggling modal
   };
 
-  useEffect(() => {
-    if (deleteArticle && !isDeleting) {
-      handleDelete();
-    }
-  }, [deleteArticle]);
-
   const handleDelete = async () => {
-    if (!token) {
-      setError("Authentication required");
-      setdeleteArticle(false);
+    if (!isPublisherLoggedIn || isDeleting) {
       return;
     }
 
     try {
       setIsDeleting(true);
+      console.log('Attempting to delete article:', article.id);
+
       const response = await fetch(`/api/articles/${article.id}`, {
-        method: 'DELETE',
+        method: "DELETE",
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete article');
+        throw new Error(errorData.message || "Failed to delete article");
       }
 
-      // Remove article from state after successful deletion
-      setArticles((prevArticles) =>
-        prevArticles.filter((a) => a.id !== article.id)
-      );
-      
+      // Remove only the deleted article from state
+      setArticles((prevArticles) => {
+        console.log('Current articles:', prevArticles.length);
+        const updatedArticles = prevArticles.filter((a) => {
+          const shouldKeep = a.id !== article.id;
+          if (!shouldKeep) {
+            console.log('Removing article:', a.id, a.title);
+          }
+          return shouldKeep;
+        });
+        console.log('Articles after deletion:', updatedArticles.length);
+        return updatedArticles;
+      });
+
       setError(null);
+      console.log('Article deleted successfully:', article.id);
+      setShowModal(false); // Close modal after successful deletion
     } catch (err) {
-      console.error('Error deleting article:', err);
+      console.error("Error deleting article:", err);
       setError(err.message);
     } finally {
       setIsDeleting(false);
-      setdeleteArticle(false);
     }
   };
 
@@ -94,12 +104,12 @@ const ArticleCard = ({
           )}
 
           {/* Delete Button for Dashboard */}
-          {isDashboard && (
+          {isDashboard && isPublisherLoggedIn && (
             <button
               className="absolute top-4 right-4 inline-flex items-center justify-center w-10 h-10 rounded-full bg-accent-500 text-white hover:bg-accent-600 transition-colors duration-200 shadow-lg"
               onClick={(e) => {
                 e.stopPropagation();
-                togglemodal();
+                toggleModal();
               }}
               disabled={isDeleting}
             >
@@ -149,7 +159,7 @@ const ArticleCard = ({
           </div>
         </div>
       </div>
-      {modal && <DeleteModal error={error} isDeleting={isDeleting} />}
+      {showModal && <DeleteModal error={error} isDeleting={isDeleting} onDelete={handleDelete} onCancel={toggleModal} />}
     </div>
   );
 };

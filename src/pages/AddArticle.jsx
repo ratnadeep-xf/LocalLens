@@ -43,6 +43,10 @@ const AddArticle = () => {
     try {
       setSubmitError(null);
 
+      if (!isPublisherLoggedIn) {
+        throw new Error('Only publishers can create articles');
+      }
+
       // Handle region selection
       let region;
       if (data.regionOfArticle?.value === "other" && data.newRegion) {
@@ -138,9 +142,10 @@ const AddArticle = () => {
     }
   };
 
-  // If not authenticated as publisher, show loading or redirect
-  if (!token || !isPublisherLoggedIn || !loggedPublisher) {
-    return null; // Component will redirect via useEffect
+  // If not authenticated as publisher, redirect
+  if (!isPublisherLoggedIn || !loggedPublisher) {
+    navigate('/');
+    return null;
   }
 
   const customSelectStyles = {

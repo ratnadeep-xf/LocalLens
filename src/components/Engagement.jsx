@@ -35,22 +35,16 @@ const Engagement = ({ article }) => {
   }, [latestArticle.engagement.votesArray, loggedUserId]);
 
   const handleVote = async (voteType) => {
-    if (!isUserLoggedIn || !loggedUser) {
+    if (!isUserLoggedIn) {
       setError("Please log in as a reader to vote");
       return;
     }
     if (isSubmitting) return;
-    
-    // Check token after confirming user is logged in
-    if (!token) {
-      setError("Authentication token is missing. Please log in again.");
-      logout(); // Force logout if token is missing
-      return;
-    }
 
     try {
       setIsSubmitting(true);
       setError(null);
+      console.log("Attempting to vote as authenticated user");
 
       const response = await fetch(`/api/articles/${article.id}/vote`, {
         method: 'POST',
@@ -69,6 +63,7 @@ const Engagement = ({ article }) => {
       }
 
       const updatedArticle = await response.json();
+      console.log("Vote successful");
 
       // Update articles in context
       setArticles(prevArticles =>
@@ -83,10 +78,9 @@ const Engagement = ({ article }) => {
       setUserVote(userVoteEntry ? (userVoteEntry.value === 1 ? "up" : "down") : null);
 
     } catch (err) {
-      setError(err.message);
       console.error('Error casting vote:', err);
-      if (err.message === 'Invalid token') {
-        // Handle token expiration
+      setError(err.message);
+      if (err.message.includes('Token') || err.message.includes('authentication')) {
         logout();
       }
     } finally {
@@ -95,21 +89,16 @@ const Engagement = ({ article }) => {
   };
 
   const handleClick = async () => {
-    if (!isUserLoggedIn || !newComment.trim() || isSubmitting) return;
-    
-    if (!token) {
-      setError("Please log in to comment");
-      return;
-    }
-    
     if (!isUserLoggedIn) {
-      setError("Only readers can post comments. Please log in as a reader.");
+      setError("Please log in as a reader to comment");
       return;
     }
+    if (!newComment.trim() || isSubmitting) return;
 
     try {
       setIsSubmitting(true);
       setError(null);
+      console.log("Attempting to post comment as authenticated user");
 
       const response = await fetch(`/api/articles/${article.id}/comment`, {
         method: 'POST',
@@ -124,14 +113,11 @@ const Engagement = ({ article }) => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        if (errorData.message === 'Token has expired' || errorData.message === 'Invalid token') {
-          logout(); // Clear the invalid session
-          throw new Error('Your session has expired. Please log in again.');
-        }
         throw new Error(errorData.message || 'Failed to post comment');
       }
 
       const updatedArticle = await response.json();
+      console.log("Comment posted successfully");
 
       // Update articles in context
       setArticles(prevArticles =>
@@ -144,8 +130,11 @@ const Engagement = ({ article }) => {
       setnewComment("");
 
     } catch (err) {
-      setError(err.message);
       console.error('Error posting comment:', err);
+      setError(err.message);
+      if (err.message.includes('Token') || err.message.includes('authentication')) {
+        logout();
+      }
     } finally {
       setIsSubmitting(false);
     }

@@ -20,6 +20,7 @@ const PublisherLogin = () => {
     setloggedPublisherId,
     loggedPublisher,
     setloggedPublisher,
+    updateToken,
   } = useContext(articleContext);
 
   // State to manage the current mode (signup or signin)
@@ -48,6 +49,10 @@ const PublisherLogin = () => {
   const newData = async (data) => {
     try {
       setErrorMsg(''); // Clear any previous errors
+      console.log("Publisher Signup: Attempting registration", { 
+        email: data.email,
+        agencyName: data.agency_name 
+      });
 
       // Validate regions
       if (!data.preferredRegions || data.preferredRegions.length === 0) {
@@ -111,18 +116,29 @@ const PublisherLogin = () => {
       }
 
       const result = await response.json();
+      console.log("Publisher Signup: Registration successful", {
+        publisherId: result.publisher.id,
+        agencyName: result.publisher.agencyName
+      });
 
-      // Set publisher as logged in
-      setisPublisherLoggedIn(true);
+      // First update the token - this will trigger the auth check effect
+      updateToken(result.token);
+      
+      // Then update publisher states
       setloggedPublisherId(result.publisher.id);
       setloggedPublisher(result.publisher);
+      setisPublisherLoggedIn(true);
       
-      // Store the token
-      localStorage.setItem('token', result.token);
+      console.log("Publisher Signup: States updated", {
+        isPublisherLoggedIn: true,
+        publisherId: result.publisher.id,
+        publisher: result.publisher,
+        hasToken: !!result.token
+      });
       
       navigate('/');
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error('Publisher Signup: Error during registration:', error);
       setErrorMsg(error.message || 'Error connecting to the server. Please try again.');
     }
   };
@@ -131,6 +147,8 @@ const PublisherLogin = () => {
   const validateData = async (data) => {
     try {
       setErrorMsg(''); // Clear any previous errors
+      console.log("Publisher Login: Attempting login", { email: data.email });
+      
       const response = await fetch('/api/auth/publisher-login', {
         method: 'POST',
         headers: {
@@ -149,18 +167,29 @@ const PublisherLogin = () => {
       }
 
       const result = await response.json();
+      console.log("Publisher Login: Login successful", {
+        publisherId: result.publisher.id,
+        agencyName: result.publisher.agencyName
+      });
 
-      // Set publisher as logged in
-      setisPublisherLoggedIn(true);
+      // First update the token - this will trigger the auth check effect
+      updateToken(result.token);
+      
+      // Then update publisher states
       setloggedPublisherId(result.publisher.id);
       setloggedPublisher(result.publisher);
+      setisPublisherLoggedIn(true);
       
-      // Store the token
-      localStorage.setItem('token', result.token);
+      console.log("Publisher Login: States updated", {
+        isPublisherLoggedIn: true,
+        publisherId: result.publisher.id,
+        publisher: result.publisher,
+        hasToken: !!result.token
+      });
       
       navigate('/');
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Publisher Login: Error during login:', error);
       setErrorMsg(error.message || 'Error connecting to the server. Please try again.');
     }
   };

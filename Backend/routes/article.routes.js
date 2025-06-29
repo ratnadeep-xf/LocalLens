@@ -1,25 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const { Article } = require('../models');
-const auth = require('../middleware/auth');
-const { v4: uuidv4 } = require('uuid');
-const multer = require('multer');
-
-// Configure multer for memory storage
-const storage = multer.memoryStorage();
-const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
-  },
-  fileFilter: (req, file, cb) => {
-    // Accept images only
-    if (!file.mimetype.startsWith('image/')) {
-      return cb(new Error('Only image files are allowed!'), false);
-    }
-    cb(null, true);
-  }
-});
+const { verifyToken } = require('../middleware/auth');
+const upload = require('../middleware/multer.middleware');
+const { uploadOnCloudinary } = require('../utils/cloudinary');
+const mongoose = require('mongoose');
 
 // Base path: /api/articles
 
@@ -36,7 +21,7 @@ router.get('/', async (req, res) => {
       id: article._id,
       title: article.title,
       content: article.content,
-      img: article.imageUrl, // Use the virtual getter
+      img: article.imageUrl,
       region: article.region,
       date: article.formattedDate,
       publisher: article.publisherName,
@@ -44,7 +29,6 @@ router.get('/', async (req, res) => {
     }));
 
     console.log('Transformed articles:', transformedArticles.length);
-
     res.json(transformedArticles);
   } catch (error) {
     console.error('Error fetching articles:', error);
@@ -52,11 +36,20 @@ router.get('/', async (req, res) => {
   }
 });
 
-
 // Create article (Publisher only)
-router.post('/', auth.isPublisher, upload.single('image'), async (req, res) => {
+router.post('/', [verifyToken, upload.single('image')], async (req, res) => {
   try {
-    const { title, content, region } = req.body;
+    // Check if user is a publisher
+    if (req.role !== 'publisher') {
+      return res.status(403).json({ message: 'Access denied. Publishers only.' });
+    }
+
+    console.log('Request body:', req.body);
+    
+    // Get form data
+    const title = req.body.title;
+    const content = req.body.content;
+    const region = req.body.region;
 
     // Validate required fields
     if (!title?.trim()) {
@@ -77,11 +70,21 @@ router.post('/', auth.isPublisher, upload.single('image'), async (req, res) => {
       return res.status(400).json({ message: 'Content should be at least 50 characters long' });
     }
 
+    // Handle image upload if provided
+    let imageUrl = null;
+    if (req.file) {
+      const cloudinaryResponse = await uploadOnCloudinary(req.file.path);
+      if (cloudinaryResponse) {
+        imageUrl = cloudinaryResponse.url;
+      }
+    }
+
     // Create article
     const article = new Article({
       title: title.trim(),
       content: content.trim(),
       region: region.trim(),
+      imageUrl,
       date: new Date().toISOString().split('T')[0].split('-').reverse().join('-'),
       publisher: req.publisher._id,
       publisherName: req.publisher.agencyName,
@@ -94,14 +97,6 @@ router.post('/', auth.isPublisher, upload.single('image'), async (req, res) => {
       }
     });
 
-    // Add image if provided
-    if (req.file) {
-      article.image = {
-        data: req.file.buffer,
-        contentType: req.file.mimetype
-      };
-    }
-
     // Save article
     const savedArticle = await article.save();
     if (!savedArticle) {
@@ -113,7 +108,7 @@ router.post('/', auth.isPublisher, upload.single('image'), async (req, res) => {
       id: savedArticle._id,
       title: savedArticle.title,
       content: savedArticle.content,
-      img: savedArticle.imageUrl, // Use the virtual getter
+      img: savedArticle.imageUrl,
       region: savedArticle.region,
       date: savedArticle.formattedDate,
       publisher: savedArticle.publisherName,
@@ -123,7 +118,6 @@ router.post('/', auth.isPublisher, upload.single('image'), async (req, res) => {
     res.status(201).json(transformedArticle);
   } catch (error) {
     console.error('Error creating article:', error);
-    // Check for validation errors
     if (error.name === 'ValidationError') {
       return res.status(400).json({
         message: 'Validation error',
@@ -135,21 +129,39 @@ router.post('/', auth.isPublisher, upload.single('image'), async (req, res) => {
 });
 
 // Delete article (Publisher only)
-router.delete('/:id', auth.isPublisher, async (req, res) => {
+router.delete('/:id', verifyToken, async (req, res) => {
   try {
-    const article = await Article.findById(req.params.id);
+    // Check if user is a publisher
+    if (req.role !== 'publisher') {
+      return res.status(403).json({ message: 'Access denied. Publishers only.' });
+    }
 
+    // Validate if the ID is a valid MongoDB ObjectId
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid article ID format' });
+    }
+
+    console.log('Delete request for article ID:', req.params.id);
+
+    // First find the article to verify ownership
+    const article = await Article.findById(req.params.id);
+    
     if (!article) {
       return res.status(404).json({ message: 'Article not found' });
     }
 
-    // Verify publisher owns this article
-    if (article.publisher.toString() !== req.publisher._id.toString()) {
-      return res.status(403).json({ message: 'Not authorized to delete this article' });
+    // Delete only if article exists and matches the exact ID
+    const result = await Article.deleteOne({
+      _id: req.params.id
+    });
+
+    console.log('Delete result:', result);
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: 'Article not found' });
     }
 
-    await article.deleteOne();
-    res.json({ message: 'Article deleted successfully', id: article._id });
+    res.json({ message: 'Article deleted successfully', id: req.params.id });
   } catch (error) {
     console.error('Error deleting article:', error);
     res.status(500).json({ message: 'Error deleting article', error: error.message });
@@ -157,8 +169,13 @@ router.delete('/:id', auth.isPublisher, async (req, res) => {
 });
 
 // Add/Update vote (User only)
-router.post('/:id/vote', auth.isUser, async (req, res) => {
+router.post('/:id/vote', verifyToken, async (req, res) => {
   try {
+    // Check if user is a reader
+    if (req.role !== 'reader') {
+      return res.status(403).json({ message: 'Access denied. Readers only.' });
+    }
+
     const { value } = req.body; // 1 for upvote, -1 for downvote
     const article = await Article.findById(req.params.id);
 
@@ -196,7 +213,7 @@ router.post('/:id/vote', auth.isUser, async (req, res) => {
       id: article._id,
       title: article.title,
       content: article.content,
-      img: article.imageUrl, // Use the virtual getter
+      img: article.imageUrl,
       region: article.region,
       date: article.formattedDate,
       publisher: article.publisherName,
@@ -205,14 +222,19 @@ router.post('/:id/vote', auth.isUser, async (req, res) => {
 
     res.json(transformedArticle);
   } catch (error) {
-    console.error('Error processing vote:', error);
-    res.status(500).json({ message: 'Error processing vote', error: error.message });
+    console.error('Error updating vote:', error);
+    res.status(500).json({ message: 'Error updating vote', error: error.message });
   }
 });
 
 // Add comment (User only)
-router.post('/:id/comment', auth.isUser, async (req, res) => {
+router.post('/:id/comment', verifyToken, async (req, res) => {
   try {
+    // Check if user is a reader
+    if (req.role !== 'reader') {
+      return res.status(403).json({ message: 'Access denied. Readers only.' });
+    }
+
     const { content } = req.body;
     const article = await Article.findById(req.params.id);
 
@@ -234,7 +256,7 @@ router.post('/:id/comment', auth.isUser, async (req, res) => {
       id: article._id,
       title: article.title,
       content: article.content,
-      img: article.imageUrl, // Use the virtual getter
+      img: article.imageUrl,
       region: article.region,
       date: article.formattedDate,
       publisher: article.publisherName,

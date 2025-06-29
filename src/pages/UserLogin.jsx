@@ -14,6 +14,7 @@ const UserLogin = () => {
     setisUserLoggedIn,
     setLoggedUserId,
     setLoggedUser,
+    updateToken,
   } = useContext(articleContext);
 
   const navigate = useNavigate();
@@ -36,6 +37,8 @@ const UserLogin = () => {
   const newData = async (data) => {
     try {
       setErrorMsg(''); // Clear any previous errors
+      console.log("User Signup: Attempting registration", { email: data.email });
+      
       const response = await fetch('/api/auth/user-register', {
         method: 'POST',
         headers: {
@@ -60,18 +63,29 @@ const UserLogin = () => {
       }
 
       const result = await response.json();
+      console.log("User Signup: Registration successful", {
+        userId: result.user.id,
+        name: result.user.name
+      });
 
-      // Set user as logged in
-      setisUserLoggedIn(true);
+      // First update the token - this will trigger the auth check effect
+      updateToken(result.token);
+      
+      // Then update user states
       setLoggedUserId(result.user.id);
       setLoggedUser(result.user);
+      setisUserLoggedIn(true);
       
-      // Store the token
-      localStorage.setItem('token', result.token);
+      console.log("User Signup: States updated", {
+        isUserLoggedIn: true,
+        userId: result.user.id,
+        user: result.user,
+        hasToken: !!result.token
+      });
       
       navigate('/');
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error('User Signup: Error during registration:', error);
       setErrorMsg(error.message || 'Error connecting to the server. Please try again.');
     }
   };
@@ -80,6 +94,8 @@ const UserLogin = () => {
   const validateData = async (data) => {
     try {
       setErrorMsg(''); // Clear any previous errors
+      console.log("User Login: Attempting login", { email: data.email });
+      
       const response = await fetch('/api/auth/user-login', {
         method: 'POST',
         headers: {
@@ -98,18 +114,29 @@ const UserLogin = () => {
       }
 
       const result = await response.json();
+      console.log("User Login: Login successful", {
+        userId: result.user.id,
+        name: result.user.name
+      });
 
-      // Set user as logged in
-      setisUserLoggedIn(true);
+      // First update the token - this will trigger the auth check effect
+      updateToken(result.token);
+      
+      // Then update user states
       setLoggedUserId(result.user.id);
       setLoggedUser(result.user);
+      setisUserLoggedIn(true);
       
-      // Store the token
-      localStorage.setItem('token', result.token);
+      console.log("User Login: States updated", {
+        isUserLoggedIn: true,
+        userId: result.user.id,
+        user: result.user,
+        hasToken: !!result.token
+      });
       
       navigate('/');
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('User Login: Error during login:', error);
       setErrorMsg(error.message || 'Error connecting to the server. Please try again.');
     }
   };
