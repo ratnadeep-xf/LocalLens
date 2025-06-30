@@ -254,6 +254,7 @@ router.post('/:id/comment', verifyToken, async (req, res) => {
     // Add new comment
     article.engagement.commentsArray.push({
       userId: req.user._id,
+      userName: req.user.name,
       content,
       createdAt: new Date()
     });

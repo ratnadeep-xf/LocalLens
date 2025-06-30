@@ -23,9 +23,11 @@ const Navbar = () => {
           {/* Left section - Logo and Navigation */}
           <div className="flex items-center space-x-8">
             <Link to="/" className="flex items-center">
-              <div className="w-32 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">LocalLens</span>
-              </div>
+              <img 
+                src="/logo.png" 
+                alt="LocalLens Logo" 
+                className="h-14 w-auto py-1 hover:scale-105 transition-transform duration-200"
+              />
             </Link>
             <nav className="hidden md:flex space-x-6">
               <Link 

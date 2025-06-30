@@ -9,6 +9,7 @@ import { FileText, Image, MapPin, Save } from "lucide-react";
 const AddArticle = () => {
   const navigate = useNavigate();
   const [submitError, setSubmitError] = useState(null);
+  const [isSubmitting, setisSubmitting] = useState(false)
 
   const {
     articles,
@@ -42,7 +43,7 @@ const AddArticle = () => {
   const onSubmit = async (data) => {
     try {
       setSubmitError(null);
-
+      setisSubmitting(true)
       if (!isPublisherLoggedIn) {
         throw new Error('Only publishers can create articles');
       }
@@ -133,6 +134,8 @@ const AddArticle = () => {
     } catch (error) {
       console.error('Error creating article:', error);
       setSubmitError(error.message || 'Error creating article. Please try again.');
+    } finally {
+      setisSubmitting(false)
     }
   };
 
@@ -317,10 +320,11 @@ const AddArticle = () => {
             <div className="flex justify-end pt-6">
               <button
                 type="submit"
+                disabled={isSubmitting}
                 className="flex items-center gap-2 px-6 py-3 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 transition-colors duration-200"
               >
                 <Save className="w-4 h-4" />
-                Publish Article
+                {isSubmitting ? 'Publishing...' : 'Publish Article'}
               </button>
             </div>
           </form>

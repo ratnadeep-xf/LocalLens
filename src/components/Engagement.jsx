@@ -225,7 +225,7 @@ const Engagement = ({ article }) => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2 mb-1">
                       <span className="text-sm font-semibold text-neutral-900">
-                        {comment.userId === loggedUserId ? loggedUser.name : "Anonymous User"}
+                        {comment.userName ? comment.userName : "Anonymous User"}
                       </span>
                       <span className="text-xs text-neutral-500">
                         {format(new Date(comment.createdAt), "MMM d, h:mm a")}

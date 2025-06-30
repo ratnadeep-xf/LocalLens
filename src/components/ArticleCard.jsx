@@ -11,12 +11,9 @@ const ArticleCard = ({
   isDashboard = false,
 }) => {
   const navigate = useNavigate();
-  const {
-    setArticles,
-    token,
-    isPublisherLoggedIn
-  } = useContext(articleContext);
-  
+  const { setArticles, token, isPublisherLoggedIn } =
+    useContext(articleContext);
+
   const [error, setError] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -38,12 +35,12 @@ const ArticleCard = ({
 
     try {
       setIsDeleting(true);
-      console.log('Attempting to delete article:', article.id);
+      console.log("Attempting to delete article:", article.id);
 
       const response = await fetch(`/api/articles/${article.id}`, {
         method: "DELETE",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
       });
@@ -55,20 +52,20 @@ const ArticleCard = ({
 
       // Remove only the deleted article from state
       setArticles((prevArticles) => {
-        console.log('Current articles:', prevArticles.length);
+        console.log("Current articles:", prevArticles.length);
         const updatedArticles = prevArticles.filter((a) => {
           const shouldKeep = a.id !== article.id;
           if (!shouldKeep) {
-            console.log('Removing article:', a.id, a.title);
+            console.log("Removing article:", a.id, a.title);
           }
           return shouldKeep;
         });
-        console.log('Articles after deletion:', updatedArticles.length);
+        console.log("Articles after deletion:", updatedArticles.length);
         return updatedArticles;
       });
 
       setError(null);
-      console.log('Article deleted successfully:', article.id);
+      console.log("Article deleted successfully:", article.id);
       setShowModal(false); // Close modal after successful deletion
     } catch (err) {
       console.error("Error deleting article:", err);
@@ -132,7 +129,13 @@ const ArticleCard = ({
               {article.publisher}
             </span>
             <span className="text-neutral-500 text-sm bg-neutral-100 px-2 py-1 rounded-full">
-              {article.region}
+              {article.region
+                .split(" ")
+                .map(
+                  (word) =>
+                    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                )
+                .join(" ")}
             </span>
           </div>
 
@@ -159,7 +162,14 @@ const ArticleCard = ({
           </div>
         </div>
       </div>
-      {showModal && <DeleteModal error={error} isDeleting={isDeleting} onDelete={handleDelete} onCancel={toggleModal} />}
+      {showModal && (
+        <DeleteModal
+          error={error}
+          isDeleting={isDeleting}
+          onDelete={handleDelete}
+          onCancel={toggleModal}
+        />
+      )}
     </div>
   );
 };

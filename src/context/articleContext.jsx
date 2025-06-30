@@ -37,6 +37,7 @@ export const ArticleProvider = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
+      console.log("Starting article fetch...");
 
       const response = await fetch("/api/articles", {
         headers: {
@@ -56,12 +57,14 @@ export const ArticleProvider = ({ children }) => {
       }
 
       const data = await response.json();
-      console.log("Received articles:", data.length);
+      console.log("Received articles from backend:", data.length);
 
       if (!Array.isArray(data)) {
+        console.error("Invalid data format:", data);
         throw new Error("Invalid data format received from server");
       }
 
+      console.log("Setting articles in state...");
       setArticles(data);
       setError(null);
     } catch (err) {
@@ -70,13 +73,20 @@ export const ArticleProvider = ({ children }) => {
       setArticles([]); // Reset articles on error
     } finally {
       setLoading(false);
+      console.log("Article fetch completed");
     }
   };
 
   // Log articles whenever they change
   useEffect(() => {
-    console.log("Articles updated:", articles);
+    console.log("Articles updated:", articles.length);
   }, [articles]);
+
+  // Fetch articles on mount and auth changes
+  useEffect(() => {
+    console.log("Fetching articles...");
+    fetchArticles();
+  }, []);
 
   // Sync token with localStorage
   useEffect(() => {
@@ -102,7 +112,9 @@ export const ArticleProvider = ({ children }) => {
     ];
     const initialRegions = uniqueRegions.map((region) => ({
       value: region,
-      label: region.charAt(0).toUpperCase() + region.slice(1),
+      label: region.split(' ').map(word => 
+        word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+      ).join(' '),
     }));
 
     initialRegions.unshift({ value: "all", label: "All Regions" });

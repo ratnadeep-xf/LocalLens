@@ -26,7 +26,9 @@ const ArticleContent = ({ article }) => {
         <div className="flex flex-wrap items-center gap-6 mb-8 pb-6 border-b border-neutral-200">
           <div className="flex items-center gap-2 text-primary-600">
             <Building2 className="h-4 w-4" />
-            <span className="font-semibold">{article.agency || article.publisher}</span>
+            <span className="font-semibold">
+              {article.agency || article.publisher}
+            </span>
           </div>
           <div className="flex items-center gap-2 text-neutral-600">
             <Calendar className="h-4 w-4" />
@@ -40,7 +42,13 @@ const ArticleContent = ({ article }) => {
           <div className="flex items-center gap-2 text-neutral-600">
             <MapPin className="h-4 w-4" />
             <span className="bg-neutral-100 px-3 py-1 rounded-full text-sm font-medium">
-              {article.region}
+              {article.region
+                .split(" ")
+                .map(
+                  (word) =>
+                    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                )
+                .join(" ")}
             </span>
           </div>
         </div>
@@ -48,7 +56,10 @@ const ArticleContent = ({ article }) => {
         {/* Article Content */}
         <div className="prose prose-lg max-w-none">
           {article.content.split("\n\n").map((paragraph, index) => (
-            <p key={index} className="text-neutral-700 leading-relaxed mb-6 text-lg">
+            <p
+              key={index}
+              className="text-neutral-700 leading-relaxed mb-6 text-lg"
+            >
               {paragraph}
             </p>
           ))}
