@@ -74,24 +74,18 @@ const AddArticle = () => {
         throw new Error('Content should be at least 50 characters long');
       }
 
-      // Handle image upload if provided
-      let imageUrl = '/default-image.png';
-      if (data.image && data.image[0]) {
-        const formData = new FormData();
-        formData.append('image', data.image[0]);
-        // TODO: Implement image upload endpoint and update imageUrl
-      }
-
-      // Create article
+      // Create FormData for article submission
       const formData = new FormData();
       formData.append('title', data.title.trim());
       formData.append('content', data.content.trim());
       formData.append('region', region);
       
+      // Append image if provided
       if (data.image && data.image[0]) {
         formData.append('image', data.image[0]);
       }
 
+      // Send request without Content-Type header (browser will set it automatically with boundary)
       const response = await fetch('/api/articles', {
         method: 'POST',
         headers: {
@@ -184,7 +178,11 @@ const AddArticle = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <form 
+            onSubmit={handleSubmit(onSubmit)} 
+            className="space-y-6"
+            encType="multipart/form-data"
+          >
             {/* Title */}
             <div>
               <label className="flex items-center gap-2 text-sm font-semibold text-neutral-700 mb-2">

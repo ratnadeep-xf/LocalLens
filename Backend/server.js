@@ -18,6 +18,13 @@ if (!process.env.JWT_SECRET) {
   process.exit(1);
 }
 
+// Verify Cloudinary environment variables
+if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+  console.error('Cloudinary credentials are not properly configured in environment variables');
+  console.error('Please ensure CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET are set');
+  process.exit(1);
+}
+
 // Initialize express
 const app = express();
 
@@ -79,6 +86,9 @@ const startServer = async () => {
       console.log('Environment variables loaded:');
       console.log('- MONGODB_URI is set:', !!process.env.MONGODB_URI);
       console.log('- JWT_SECRET is set:', !!process.env.JWT_SECRET);
+      console.log('- CLOUDINARY_CLOUD_NAME is set:', !!process.env.CLOUDINARY_CLOUD_NAME);
+      console.log('- CLOUDINARY_API_KEY is set:', !!process.env.CLOUDINARY_API_KEY);
+      console.log('- CLOUDINARY_API_SECRET is set:', !!process.env.CLOUDINARY_API_SECRET);
     });
   } catch (error) {
     console.error('Failed to start server:', error);

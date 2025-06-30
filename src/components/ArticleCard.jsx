@@ -89,7 +89,7 @@ const ArticleCard = ({
         {/* Background Image */}
         <div className="relative h-48 sm:h-56 overflow-hidden">
           <img
-            src={article.img || article.imageUrl || "/default-background.png"}
+            src={article.imageUrl || "/default-background.png"}
             alt={article.title}
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
           />

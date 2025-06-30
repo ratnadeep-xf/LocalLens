@@ -21,7 +21,7 @@ router.get('/', async (req, res) => {
       id: article._id,
       title: article.title,
       content: article.content,
-      img: article.imageUrl,
+      imageUrl: article.imageUrl,
       region: article.region,
       date: article.formattedDate,
       publisher: article.publisherName,
@@ -45,6 +45,7 @@ router.post('/', [verifyToken, upload.single('image')], async (req, res) => {
     }
 
     console.log('Request body:', req.body);
+    console.log('File details:', req.file);
     
     // Get form data
     const title = req.body.title;
@@ -73,10 +74,14 @@ router.post('/', [verifyToken, upload.single('image')], async (req, res) => {
     // Handle image upload if provided
     let imageUrl = null;
     if (req.file) {
-      const cloudinaryResponse = await uploadOnCloudinary(req.file.path);
-      if (cloudinaryResponse) {
-        imageUrl = cloudinaryResponse.url;
+      console.log('Uploading file to Cloudinary:', req.file.path);
+      const cloudinaryUrl = await uploadOnCloudinary(req.file.path);
+      console.log('Cloudinary upload result:', cloudinaryUrl);
+      if (cloudinaryUrl) {
+        imageUrl = cloudinaryUrl;
       }
+    } else {
+      console.log('No file was uploaded');
     }
 
     // Create article
@@ -97,18 +102,22 @@ router.post('/', [verifyToken, upload.single('image')], async (req, res) => {
       }
     });
 
+    console.log('Article to be saved:', article);
+
     // Save article
     const savedArticle = await article.save();
     if (!savedArticle) {
       throw new Error('Failed to save article');
     }
 
+    console.log('Saved article:', savedArticle);
+
     // Transform the response to match frontend expectations
     const transformedArticle = {
       id: savedArticle._id,
       title: savedArticle.title,
       content: savedArticle.content,
-      img: savedArticle.imageUrl,
+      imageUrl: savedArticle.imageUrl,
       region: savedArticle.region,
       date: savedArticle.formattedDate,
       publisher: savedArticle.publisherName,
@@ -213,7 +222,7 @@ router.post('/:id/vote', verifyToken, async (req, res) => {
       id: article._id,
       title: article.title,
       content: article.content,
-      img: article.imageUrl,
+      imageUrl: article.imageUrl,
       region: article.region,
       date: article.formattedDate,
       publisher: article.publisherName,
@@ -256,7 +265,7 @@ router.post('/:id/comment', verifyToken, async (req, res) => {
       id: article._id,
       title: article.title,
       content: article.content,
-      img: article.imageUrl,
+      imageUrl: article.imageUrl,
       region: article.region,
       date: article.formattedDate,
       publisher: article.publisherName,

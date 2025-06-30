@@ -8,7 +8,7 @@ const ArticleContent = ({ article }) => {
       {/* Featured Image */}
       <div className="w-full h-64 md:h-80 lg:h-96 relative overflow-hidden">
         <img
-          src={article.image || article.img}
+          src={article.imageUrl}
           alt={article.title}
           className="w-full h-full object-cover"
         />

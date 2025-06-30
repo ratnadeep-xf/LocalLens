@@ -14,9 +14,8 @@ const articleSchema = new mongoose.Schema({
     required: [true, 'Content is required'],
     minlength: [50, 'Content should be at least 50 characters long']
   },
-  image: {
-    data: Buffer,
-    contentType: String
+  imageUrl: {
+    type: String
   },
   region: {
     type: String,
@@ -99,12 +98,12 @@ articleSchema.virtual('formattedDate').get(function() {
 });
 
 // Virtual for base64 image
-articleSchema.virtual('imageUrl').get(function() {
-  if (this.image && this.image.data && this.image.contentType) {
-    return `data:${this.image.contentType};base64,${this.image.data.toString('base64')}`;
-  }
-  return '/default-image.png';
-});
+// articleSchema.virtual('imageUrl').get(function() {
+//   if (this.image && this.image.data && this.image.contentType) {
+//     return `data:${this.image.contentType};base64,${this.image.data.toString('base64')}`;
+//   }
+//   return '/default-image.png';
+// });
 
 // Middleware to update comment and vote counts
 articleSchema.pre('save', function(next) {

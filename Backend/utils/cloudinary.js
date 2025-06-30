@@ -1,5 +1,6 @@
 const cloudinary = require("cloudinary").v2;
 const fs = require("fs");
+require('dotenv').config();
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -10,13 +11,21 @@ cloudinary.config({
 const uploadOnCloudinary = async (localFilePath) => {
   try {
     if (!localFilePath) return null;
+    // Upload the file
     const response = await cloudinary.uploader.upload(localFilePath, {
       resource_type: "image",
     });
-    console.log("File has been uploaded on Cloudinary : ", response.url);
-    return response;
-  } catch (error) {
+    // Remove the locally saved temp file
     fs.unlinkSync(localFilePath);
+    console.log("File has been uploaded on Cloudinary : ", response.url);
+    // Return only the URL
+    return response.url;
+  } catch (error) {
+    // Remove the locally saved temp file in case of upload failure
+    if (localFilePath && fs.existsSync(localFilePath)) {
+      fs.unlinkSync(localFilePath);
+    }
+    console.error("Error uploading file to Cloudinary:", error);
     return null;
   }
 };
