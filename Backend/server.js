@@ -63,6 +63,8 @@ const allowedOrigins = [
   "http://localhost:5173",
   "https://local-lens-skvi.vercel.app",
   process.env.FRONTEND_URL,
+  "https://local-lens-skvi-iqlabwnaq-xfactor1289-4763s-projects.vercel.app",
+  "https://local-lens-skvi-git-main-xfactor1289-4763s-projects.vercel.app",
 ].filter(Boolean);
 
 app.use(cors({
