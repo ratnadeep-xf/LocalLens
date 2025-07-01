@@ -101,18 +101,68 @@ app.get("/", (req, res) => {
   res.json({ message: "LocalLens API is running" });
 });
 
-// Error handling middleware
+// Enhanced error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  // Log the full error details
+  console.error('Error details:', {
+    message: err.message,
+    stack: err.stack,
+    path: req.path,
+    method: req.method,
+    body: req.body,
+    query: req.query,
+    params: req.params,
+    headers: req.headers,
+  });
+
+  // Send appropriate error response
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({
+      message: 'Validation error',
+      errors: Object.values(err.errors).map(e => e.message),
+      type: 'ValidationError'
+    });
+  }
+
+  if (err.name === 'MongoError' || err.name === 'MongoServerError') {
+    return res.status(500).json({
+      message: 'Database error',
+      error: err.message,
+      type: 'DatabaseError'
+    });
+  }
+
+  if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+    return res.status(401).json({
+      message: 'Authentication error',
+      error: err.message,
+      type: 'AuthError'
+    });
+  }
+
+  // Default error response
   res.status(500).json({
-    message: "Something broke!",
-    error: err.message,
+    message: 'Internal server error',
+    error: process.env.NODE_ENV === 'development' ? err.message : 'An unexpected error occurred',
+    type: err.name || 'UnknownError'
   });
 });
 
-// 404 handler
+// Enhanced 404 handler
 app.use((req, res) => {
-  res.status(404).json({ message: "Route not found" });
+  console.log('404 Not Found:', {
+    path: req.path,
+    method: req.method,
+    body: req.body,
+    query: req.query,
+    params: req.params,
+  });
+  
+  res.status(404).json({ 
+    message: "Route not found",
+    path: req.path,
+    method: req.method
+  });
 });
 
 const PORT = process.env.PORT || 5000;
