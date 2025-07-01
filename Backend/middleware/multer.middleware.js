@@ -4,9 +4,6 @@ const fs = require('fs');
 
 // Ensure temp directory exists
 const tempDir = path.join(__dirname, '../public/temp');
-if (!fs.existsSync(tempDir)) {
-  fs.mkdirSync(tempDir, { recursive: true });
-}
 
 // Configure multer for disk storage
 const storage = multer.diskStorage({
