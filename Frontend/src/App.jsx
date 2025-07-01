@@ -11,8 +11,6 @@ import { ArticleProvider } from "./context/articleContext";
 import DeleteModal from "./components/DeleteModal";
 
 function App() {
-  const [count, setCount] = useState(0);
-
   return (
     <>
       <ArticleProvider>

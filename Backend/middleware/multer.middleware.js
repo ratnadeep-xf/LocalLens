@@ -1,10 +1,17 @@
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
+
+// Ensure temp directory exists
+const tempDir = path.join(__dirname, '../public/temp');
+if (!fs.existsSync(tempDir)) {
+  fs.mkdirSync(tempDir, { recursive: true });
+}
 
 // Configure multer for disk storage
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-      cb(null, path.join(__dirname, '../public/temp'))
+      cb(null, tempDir)
     },
     filename: function (req, file, cb) {
       // Generate unique filename with timestamp

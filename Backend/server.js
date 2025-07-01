@@ -3,6 +3,8 @@ const cookieParser = require('cookie-parser');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 const routes = require('./routes');
+const path = require('path');
+const fs = require('fs');
 
 // Load environment variables
 dotenv.config();
@@ -34,14 +36,29 @@ connectDB().catch(err => {
   process.exit(1);
 });
 
+// Ensure temp directory exists
+const tempDir = path.join(__dirname, 'public', 'temp');
+if (!fs.existsSync(tempDir)) {
+  fs.mkdirSync(tempDir, { recursive: true });
+}
+
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 
-// CORS setup (for development)
+// CORS setup
+const allowedOrigins = [
+  'http://localhost:5173', // Local development
+  'https://local-lens.vercel.app', // Production frontend (update this)
+  process.env.FRONTEND_URL, // From environment variable
+];
+
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'http://localhost:5173'); // Your Vite frontend URL
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
   res.header('Access-Control-Allow-Credentials', true);
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -52,6 +69,9 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// Serve static files from public directory
+app.use('/public', express.static(path.join(__dirname, 'public')));
 
 // Mount all routes under /api
 app.use('/api', routes);
@@ -89,6 +109,7 @@ const startServer = async () => {
       console.log('- CLOUDINARY_CLOUD_NAME is set:', !!process.env.CLOUDINARY_CLOUD_NAME);
       console.log('- CLOUDINARY_API_KEY is set:', !!process.env.CLOUDINARY_API_KEY);
       console.log('- CLOUDINARY_API_SECRET is set:', !!process.env.CLOUDINARY_API_SECRET);
+      console.log('- FRONTEND_URL is set:', !!process.env.FRONTEND_URL);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
@@ -125,3 +146,6 @@ process.on('unhandledRejection', (error) => {
 
 // Start the server
 startServer();
+
+// Export for Vercel
+module.exports = app;

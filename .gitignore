@@ -22,4 +22,21 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment files
 .env
+.env.*
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Temporary files
+**/tmp/
+
+# Testing and coverage
+coverage/
+.nyc_output/
+
+# Vercel
+.vercel
