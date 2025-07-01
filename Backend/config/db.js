@@ -14,19 +14,17 @@ const connectDB = async () => {
       socketTimeoutMS: 45000,
       connectTimeoutMS: 15000,
       maxPoolSize: 50,
-      minPoolSize: 10,
-      useNewUrlParser: true,
-      useUnifiedTopology: true
+      minPoolSize: 10
     };
 
-    const conn = await mongoose.connect(process.env.MONGODB_URI, options);
+    await mongoose.connect(process.env.MONGODB_URI, options);
 
     // Log successful connection details
     console.log('MongoDB Connected:', {
-      host: conn.connection.host,
-      port: conn.connection.port,
-      dbName: conn.connection.db.databaseName,
-      readyState: mongoose.connection.readyState
+      host: mongoose.connection.host,
+      port: mongoose.connection.port,
+      readyState: mongoose.connection.readyState,
+      name: mongoose.connection.name
     });
 
     // Set up connection error handler
@@ -39,7 +37,7 @@ const connectDB = async () => {
       console.log('MongoDB disconnected');
     });
 
-    return conn;
+    return mongoose.connection;
   } catch (error) {
     // Enhanced error logging
     console.error('MongoDB connection error:', {
