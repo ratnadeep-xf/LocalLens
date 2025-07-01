@@ -49,9 +49,11 @@ app.use(express.urlencoded({ extended: true }));
 
 // CORS setup
 const allowedOrigins = [
-  'http://localhost:5173', // Local development
-  'https://local-lens.vercel.app', // Production frontend (update this)
-  process.env.FRONTEND_URL, // From environment variable
+  'http://localhost:5173',                    // Local development
+  'https://local-lens.vercel.app',           // Production frontend (update this)
+  process.env.FRONTEND_URL,                   // From environment variable
+  'https://locallens.vercel.app',            // Alternative production URL
+  'https://local-lens-git-main.vercel.app'   // Vercel preview URL
 ];
 
 app.use((req, res, next) => {
@@ -61,7 +63,7 @@ app.use((req, res, next) => {
   }
   res.header('Access-Control-Allow-Credentials', true);
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
   
   // Handle preflight requests
   if (req.method === 'OPTIONS') {

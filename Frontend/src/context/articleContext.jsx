@@ -1,6 +1,9 @@
 import { createContext, useState, useEffect } from "react";
 import { demoArticles, demoPublishers, demoUsers } from "./demoData";
 
+// API base URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
 export const articleContext = createContext();
 
 export const ArticleProvider = ({ children }) => {
@@ -39,7 +42,7 @@ export const ArticleProvider = ({ children }) => {
       setError(null);
       console.log("Starting article fetch...");
 
-      const response = await fetch("/api/articles", {
+      const response = await fetch(`${API_BASE_URL}/articles`, {
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
@@ -140,7 +143,7 @@ export const ArticleProvider = ({ children }) => {
       }
 
       try {
-        const response = await fetch("/api/auth/verify", {
+        const response = await fetch(`${API_BASE_URL}/auth/verify`, {
           headers: {
             Authorization: `Bearer ${storedToken}`,
           },
