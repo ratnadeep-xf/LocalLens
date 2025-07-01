@@ -63,25 +63,37 @@ const allowedOrigins = [
   "http://localhost:5173",
   "https://local-lens-skvi.vercel.app",
   process.env.FRONTEND_URL,
-  "https://local-lens-skvi-iqlabwnaq-xfactor1289-4763s-projects.vercel.app",
-  "https://local-lens-skvi-git-main-xfactor1289-4763s-projects.vercel.app",
 ].filter(Boolean);
 
 app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
+  origin: (origin, callback) => {
+    console.log('Request origin:', origin);
     
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) {
+      console.log('Allowing request with no origin');
+      return callback(null, true);
+    }
+
     if (allowedOrigins.indexOf(origin) === -1) {
       console.log('Blocked origin:', origin);
       console.log('Allowed origins:', allowedOrigins);
-      return callback(new Error('CORS policy violation'), false);
+      var msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
     }
+
+    console.log('Allowing origin:', origin);
     return callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  maxAge: 600 // Cache preflight request for 10 minutes
 }));
+
+// Add OPTIONS handling for all routes
+app.options('*', cors());
 
 // Middleware
 app.use(express.json());
