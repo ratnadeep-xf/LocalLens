@@ -45,10 +45,17 @@ connectDB().catch((err) => {
   process.exit(1);
 });
 
-// Ensure temp directory exists
-const tempDir = path.join(__dirname, "public", "temp");
-if (!fs.existsSync(tempDir)) {
-  fs.mkdirSync(tempDir, { recursive: true });
+// Create temp directory only in development environment
+if (process.env.NODE_ENV === 'development') {
+  const tempDir = path.join(__dirname, "public", "temp");
+  if (!fs.existsSync(tempDir)) {
+    try {
+      fs.mkdirSync(tempDir, { recursive: true });
+    } catch (err) {
+      console.warn("Warning: Could not create temp directory:", err.message);
+      // Don't exit process, as this is not critical in production
+    }
+  }
 }
 
 // CORS configuration
@@ -58,11 +65,10 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
   "https://local-lens-skvi-iqlabwnaq-xfactor1289-4763s-projects.vercel.app",
   "https://local-lens-skvi-git-main-xfactor1289-4763s-projects.vercel.app",
-].filter(Boolean); // Remove any undefined values
+].filter(Boolean);
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
     if (allowedOrigins.indexOf(origin) === -1) {
@@ -82,8 +88,10 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files from public directory
-app.use("/public", express.static(path.join(__dirname, "public")));
+// Serve static files only in development
+if (process.env.NODE_ENV === 'development') {
+  app.use("/public", express.static(path.join(__dirname, "public")));
+}
 
 // Mount all routes under /api
 app.use("/api", routes);
@@ -131,6 +139,8 @@ const startServer = async () => {
         !!process.env.CLOUDINARY_API_SECRET
       );
       console.log("- FRONTEND_URL is set:", !!process.env.FRONTEND_URL);
+      console.log("- NODE_ENV:", process.env.NODE_ENV);
+      console.log("Allowed CORS origins:", allowedOrigins);
     });
   } catch (error) {
     console.error("Failed to start server:", error);

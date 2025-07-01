@@ -31,8 +31,6 @@ dist-ssr
 .env.test
 .env.production
 
-# Temporary files
-**/tmp/
 
 # Testing and coverage
 coverage/
