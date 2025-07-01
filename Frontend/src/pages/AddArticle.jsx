@@ -5,7 +5,7 @@ import { useForm, Controller, useWatch } from "react-hook-form";
 import { articleContext } from "../context/articleContext";
 import { useNavigate } from "react-router-dom";
 import { FileText, Image, MapPin, Save } from "lucide-react";
-import { ARTICLE_ENDPOINTS } from "../utils/api";
+import { ARTICLE_ENDPOINTS, apiCall } from "../utils/api";
 
 const AddArticle = () => {
   const navigate = useNavigate();

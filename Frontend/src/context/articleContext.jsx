@@ -1,6 +1,6 @@
 import { createContext, useState, useEffect } from "react";
 import { demoArticles, demoPublishers, demoUsers } from "./demoData";
-import { API_BASE_URL, AUTH_ENDPOINTS, ARTICLE_ENDPOINTS } from "../utils/api";
+import { API_BASE_URL, AUTH_ENDPOINTS, ARTICLE_ENDPOINTS, apiCall } from "../utils/api";
 
 export const articleContext = createContext();
 
@@ -35,46 +35,14 @@ export const ArticleProvider = ({ children }) => {
 
   // Function to fetch articles
   const fetchArticles = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      setError(null);
-      console.log("Starting article fetch...");
-
-      const response = await fetch(ARTICLE_ENDPOINTS.getAll, {
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
-      });
-
-      console.log("Response status:", response.status);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.message || `HTTP error! status: ${response.status}`
-        );
-      }
-
-      const data = await response.json();
-      console.log("Received articles from backend:", data.length);
-
-      if (!Array.isArray(data)) {
-        console.error("Invalid data format:", data);
-        throw new Error("Invalid data format received from server");
-      }
-
-      console.log("Setting articles in state...");
+      const data = await apiCall(ARTICLE_ENDPOINTS.getAll);
       setArticles(data);
-      setError(null);
     } catch (err) {
-      console.error("Error fetching articles:", err);
       setError(err.message || "Failed to fetch articles");
-      setArticles([]); // Reset articles on error
     } finally {
       setLoading(false);
-      console.log("Article fetch completed");
     }
   };
 
@@ -141,17 +109,7 @@ export const ArticleProvider = ({ children }) => {
       }
 
       try {
-        const response = await fetch(AUTH_ENDPOINTS.verify, {
-          headers: {
-            Authorization: `Bearer ${storedToken}`,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error("Invalid token");
-        }
-
-        const data = await response.json();
+        const data = await apiCall(AUTH_ENDPOINTS.verify);
 
         // Set token first
         setToken(storedToken);

@@ -1,6 +1,33 @@
 // API base URL from environment variable
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
+// Default fetch options for all API calls
+export const defaultFetchOptions = {
+  credentials: 'include',
+  headers: {
+    'Content-Type': 'application/json',
+  }
+};
+
+// Helper function to make API calls
+export const apiCall = async (url, options = {}) => {
+  const response = await fetch(url, {
+    ...defaultFetchOptions,
+    ...options,
+    headers: {
+      ...defaultFetchOptions.headers,
+      ...options.headers,
+    },
+  });
+  
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'An error occurred' }));
+    throw new Error(error.message || 'An error occurred');
+  }
+  
+  return response.json();
+};
+
 // Auth endpoints
 export const AUTH_ENDPOINTS = {
   userLogin: `${API_BASE_URL}/auth/user-login`,

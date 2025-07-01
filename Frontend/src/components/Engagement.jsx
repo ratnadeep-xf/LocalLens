@@ -2,7 +2,7 @@ import React, { useState, useContext, useEffect } from "react";
 import { ArrowUp, ArrowDown, MessageCircle, User, Send } from "lucide-react";
 import { format } from "date-fns";
 import { articleContext } from "../context/articleContext";
-import { ARTICLE_ENDPOINTS } from "../utils/api";
+import { ARTICLE_ENDPOINTS, apiCall } from "../utils/api";
 
 const Engagement = ({ article }) => {
   const { 
@@ -35,63 +35,41 @@ const Engagement = ({ article }) => {
     }
   }, [latestArticle.engagement.votesArray, loggedUserId]);
 
-  const handleVote = async (voteType) => {
+  const handleVote = async (type) => {
     if (!isUserLoggedIn) {
-      setError("Please log in as a reader to vote");
+      setError("Please login to vote");
       return;
     }
-    if (isSubmitting) return;
 
     try {
-      setIsSubmitting(true);
-      setError(null);
-      console.log("Attempting to vote as authenticated user");
-
-      const response = await fetch(ARTICLE_ENDPOINTS.vote(article.id), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          value: voteType === "up" ? 1 : -1
-        })
+      const data = await apiCall(ARTICLE_ENDPOINTS.vote(article.id), {
+        method: "POST",
+        body: JSON.stringify({ type }),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to cast vote');
-      }
-
-      const updatedArticle = await response.json();
-      console.log("Vote successful");
 
       // Update articles in context
       setArticles(prevArticles =>
         prevArticles.map(a =>
-          a.id === article.id ? updatedArticle : a
+          a.id === article.id ? data : a
         )
       );
 
       // Update local user vote state
-      const newVoteArray = updatedArticle.engagement.votesArray;
+      const newVoteArray = data.engagement.votesArray;
       const userVoteEntry = newVoteArray.find(vote => vote.userId === loggedUserId);
       setUserVote(userVoteEntry ? (userVoteEntry.value === 1 ? "up" : "down") : null);
 
     } catch (err) {
-      console.error('Error casting vote:', err);
-      setError(err.message);
+      setError(err.message || "Failed to vote");
       if (err.message.includes('Token') || err.message.includes('authentication')) {
         logout();
       }
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
   const handleClick = async () => {
     if (!isUserLoggedIn) {
-      setError("Please log in as a reader to comment");
+      setError("Please login to comment");
       return;
     }
     if (!newComment.trim() || isSubmitting) return;
@@ -101,29 +79,15 @@ const Engagement = ({ article }) => {
       setError(null);
       console.log("Attempting to post comment as authenticated user");
 
-      const response = await fetch(ARTICLE_ENDPOINTS.comment(article.id), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          content: newComment.trim()
-        })
+      const data = await apiCall(ARTICLE_ENDPOINTS.comment(article.id), {
+        method: "POST",
+        body: JSON.stringify({ content: newComment.trim() }),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to post comment');
-      }
-
-      const updatedArticle = await response.json();
-      console.log("Comment posted successfully");
 
       // Update articles in context
       setArticles(prevArticles =>
         prevArticles.map(a =>
-          a.id === article.id ? updatedArticle : a
+          a.id === article.id ? data : a
         )
       );
 
@@ -132,7 +96,7 @@ const Engagement = ({ article }) => {
 
     } catch (err) {
       console.error('Error posting comment:', err);
-      setError(err.message);
+      setError(err.message || "Failed to post comment");
       if (err.message.includes('Token') || err.message.includes('authentication')) {
         logout();
       }

@@ -5,6 +5,7 @@ const connectDB = require("./config/db");
 const routes = require("./routes");
 const path = require("path");
 const fs = require("fs");
+const cors = require("cors");
 
 // Load environment variables
 dotenv.config();
@@ -50,38 +51,36 @@ if (!fs.existsSync(tempDir)) {
   fs.mkdirSync(tempDir, { recursive: true });
 }
 
+// CORS configuration
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://local-lens-skvi.vercel.app",
+  process.env.FRONTEND_URL,
+  "https://local-lens-skvi-iqlabwnaq-xfactor1289-4763s-projects.vercel.app",
+  "https://local-lens-skvi-git-main-xfactor1289-4763s-projects.vercel.app",
+].filter(Boolean); // Remove any undefined values
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) === -1) {
+      console.log('Blocked origin:', origin);
+      console.log('Allowed origins:', allowedOrigins);
+      return callback(new Error('CORS policy violation'), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+}));
+
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
-
-// CORS setup
-const allowedOrigins = [
-  "http://localhost:5173", // Local development
-  "https://local-lens-skvi.vercel.app", // Production frontend (update this)
-  process.env.FRONTEND_URL, // From environment variable
-  "https://local-lens-skvi-iqlabwnaq-xfactor1289-4763s-projects.vercel.app", // Alternative production URL
-  "https://local-lens-skvi-git-main-xfactor1289-4763s-projects.vercel.app", // Vercel preview URL
-];
-
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.header("Access-Control-Allow-Origin", origin);
-  }
-  res.header("Access-Control-Allow-Credentials", true);
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Authorization, X-Requested-With, Accept"
-  );
-
-  // Handle preflight requests
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(200);
-  }
-  next();
-});
 
 // Serve static files from public directory
 app.use("/public", express.static(path.join(__dirname, "public")));

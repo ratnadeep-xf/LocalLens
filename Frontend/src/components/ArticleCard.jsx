@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 import DeleteModal from "./DeleteModal";
 import { articleContext } from "../context/articleContext";
-import { ARTICLE_ENDPOINTS } from "../utils/api";
+import { ARTICLE_ENDPOINTS, apiCall } from "../utils/api";
 
 const ArticleCard = ({
   article,
@@ -38,20 +38,11 @@ const ArticleCard = ({
       setIsDeleting(true);
       console.log("Attempting to delete article:", article.id);
 
-      const response = await fetch(ARTICLE_ENDPOINTS.delete(article.id), {
+      await apiCall(ARTICLE_ENDPOINTS.delete(article.id), {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to delete article");
-      }
-
-      // Remove only the deleted article from state
+      // Remove article from state
       setArticles((prevArticles) => {
         console.log("Current articles:", prevArticles.length);
         const updatedArticles = prevArticles.filter((a) => {
@@ -70,7 +61,7 @@ const ArticleCard = ({
       setShowModal(false); // Close modal after successful deletion
     } catch (err) {
       console.error("Error deleting article:", err);
-      setError(err.message);
+      setError(err.message || "Failed to delete article");
     } finally {
       setIsDeleting(false);
     }
