@@ -4,6 +4,7 @@ import { useForm, Controller, useWatch } from "react-hook-form";
 import { articleContext } from "../context/articleContext";
 import { useNavigate } from "react-router-dom";
 import { Building2, Mail, Lock, MapPin, User, Phone } from "lucide-react";
+import { AUTH_ENDPOINTS } from "../utils/api";
 
 const PublisherLogin = () => {
   const navigate = useNavigate();
@@ -90,7 +91,7 @@ const PublisherLogin = () => {
         throw new Error('Phone number must be exactly 10 digits');
       }
 
-      const response = await fetch('/api/auth/publisher-register', {
+      const response = await fetch(AUTH_ENDPOINTS.publisherRegister, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -149,7 +150,7 @@ const PublisherLogin = () => {
       setErrorMsg(''); // Clear any previous errors
       console.log("Publisher Login: Attempting login", { email: data.email });
       
-      const response = await fetch('/api/auth/publisher-login', {
+      const response = await fetch(AUTH_ENDPOINTS.publisherLogin, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

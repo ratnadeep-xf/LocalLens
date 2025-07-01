@@ -4,6 +4,7 @@ import { useForm, Controller } from "react-hook-form";
 import { articleContext } from "../context/articleContext";
 import { useNavigate } from "react-router-dom";
 import { User, Mail, Lock, MapPin } from "lucide-react";
+import { AUTH_ENDPOINTS } from "../utils/api";
 
 const UserLogin = () => {
   // Access from the article context
@@ -39,7 +40,7 @@ const UserLogin = () => {
       setErrorMsg(''); // Clear any previous errors
       console.log("User Signup: Attempting registration", { email: data.email });
       
-      const response = await fetch('/api/auth/user-register', {
+      const response = await fetch(AUTH_ENDPOINTS.userRegister, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -96,7 +97,7 @@ const UserLogin = () => {
       setErrorMsg(''); // Clear any previous errors
       console.log("User Login: Attempting login", { email: data.email });
       
-      const response = await fetch('/api/auth/user-login', {
+      const response = await fetch(AUTH_ENDPOINTS.userLogin, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

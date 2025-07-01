@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 import DeleteModal from "./DeleteModal";
 import { articleContext } from "../context/articleContext";
+import { ARTICLE_ENDPOINTS } from "../utils/api";
 
 const ArticleCard = ({
   article,
@@ -37,7 +38,7 @@ const ArticleCard = ({
       setIsDeleting(true);
       console.log("Attempting to delete article:", article.id);
 
-      const response = await fetch(`/api/articles/${article.id}`, {
+      const response = await fetch(ARTICLE_ENDPOINTS.delete(article.id), {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",

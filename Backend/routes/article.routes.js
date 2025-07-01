@@ -6,7 +6,7 @@ const upload = require('../middleware/multer.middleware');
 const { uploadOnCloudinary } = require('../utils/cloudinary');
 const mongoose = require('mongoose');
 
-// Base path: /api/articles
+// Base path: /VITE_API_URL/articles
 
 // Get all articles
 router.get('/', async (req, res) => {

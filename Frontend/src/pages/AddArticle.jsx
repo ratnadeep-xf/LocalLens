@@ -5,6 +5,7 @@ import { useForm, Controller, useWatch } from "react-hook-form";
 import { articleContext } from "../context/articleContext";
 import { useNavigate } from "react-router-dom";
 import { FileText, Image, MapPin, Save } from "lucide-react";
+import { ARTICLE_ENDPOINTS } from "../utils/api";
 
 const AddArticle = () => {
   const navigate = useNavigate();
@@ -87,7 +88,7 @@ const AddArticle = () => {
       }
 
       // Send request without Content-Type header (browser will set it automatically with boundary)
-      const response = await fetch('/api/articles', {
+      const response = await fetch(ARTICLE_ENDPOINTS.create, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

@@ -2,6 +2,7 @@ import React, { useState, useContext, useEffect } from "react";
 import { ArrowUp, ArrowDown, MessageCircle, User, Send } from "lucide-react";
 import { format } from "date-fns";
 import { articleContext } from "../context/articleContext";
+import { ARTICLE_ENDPOINTS } from "../utils/api";
 
 const Engagement = ({ article }) => {
   const { 
@@ -46,7 +47,7 @@ const Engagement = ({ article }) => {
       setError(null);
       console.log("Attempting to vote as authenticated user");
 
-      const response = await fetch(`/api/articles/${article.id}/vote`, {
+      const response = await fetch(ARTICLE_ENDPOINTS.vote(article.id), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -100,7 +101,7 @@ const Engagement = ({ article }) => {
       setError(null);
       console.log("Attempting to post comment as authenticated user");
 
-      const response = await fetch(`/api/articles/${article.id}/comment`, {
+      const response = await fetch(ARTICLE_ENDPOINTS.comment(article.id), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
