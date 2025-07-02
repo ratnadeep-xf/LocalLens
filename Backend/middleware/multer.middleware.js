@@ -1,14 +1,13 @@
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { v2: cloudinary } = require('cloudinary');
 
-// Ensure temp directory exists
-const tempDir = path.join(__dirname, '../public/temp');
 
 // Configure multer for disk storage
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-      cb(null, tempDir)
+      cb(null, "/tmp")
     },
     filename: function (req, file, cb) {
       // Generate unique filename with timestamp

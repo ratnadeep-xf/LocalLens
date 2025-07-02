@@ -13,13 +13,23 @@ export const defaultFetchOptions = {
 // Helper function to make API calls
 export const apiCall = async (url, options = {}) => {
   try {
+    // Get token from localStorage
+    const token = localStorage.getItem('token');
+    
+    // Prepare headers with token if available
+    const headers = {
+      ...defaultFetchOptions.headers,
+      ...options.headers,
+    };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(url, {
       ...defaultFetchOptions,
       ...options,
-      headers: {
-        ...defaultFetchOptions.headers,
-        ...options.headers,
-      },
+      headers,
     });
 
     const data = await response.json();

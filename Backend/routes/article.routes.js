@@ -44,8 +44,16 @@ router.post('/', [verifyToken, upload.single('image')], async (req, res) => {
       return res.status(403).json({ message: 'Access denied. Publishers only.' });
     }
 
-    console.log('Request body:', req.body);
-    console.log('File details:', req.file);
+    console.log('Request body:', {
+      title: req.body.title,
+      content: req.body.content?.length,
+      region: req.body.region
+    });
+    console.log('File details:', req.file ? {
+      filename: req.file.filename,
+      size: req.file.size,
+      mimetype: req.file.mimetype
+    } : 'No file uploaded');
     
     // Get form data
     const title = req.body.title;
@@ -74,11 +82,20 @@ router.post('/', [verifyToken, upload.single('image')], async (req, res) => {
     // Handle image upload if provided
     let imageUrl = null;
     if (req.file) {
-      console.log('Uploading file to Cloudinary:', req.file.path);
-      const cloudinaryUrl = await uploadOnCloudinary(req.file.path);
-      console.log('Cloudinary upload result:', cloudinaryUrl);
-      if (cloudinaryUrl) {
+      try {
+        console.log('Uploading file to Cloudinary:', req.file.path);
+        const cloudinaryUrl = await uploadOnCloudinary(req.file.path);
+        console.log('Cloudinary upload result:', cloudinaryUrl);
+        if (!cloudinaryUrl) {
+          throw new Error('Failed to upload image to Cloudinary');
+        }
         imageUrl = cloudinaryUrl;
+      } catch (uploadError) {
+        console.error('Error uploading to Cloudinary:', uploadError);
+        return res.status(500).json({ 
+          message: 'Error uploading image', 
+          error: uploadError.message 
+        });
       }
     } else {
       console.log('No file was uploaded');
@@ -102,7 +119,12 @@ router.post('/', [verifyToken, upload.single('image')], async (req, res) => {
       }
     });
 
-    console.log('Article to be saved:', article);
+    console.log('Article to be saved:', {
+      title: article.title,
+      region: article.region,
+      publisher: article.publisherName,
+      hasImage: !!article.imageUrl
+    });
 
     // Save article
     const savedArticle = await article.save();
@@ -110,7 +132,10 @@ router.post('/', [verifyToken, upload.single('image')], async (req, res) => {
       throw new Error('Failed to save article');
     }
 
-    console.log('Saved article:', savedArticle);
+    console.log('Saved article:', {
+      id: savedArticle._id,
+      title: savedArticle.title
+    });
 
     // Transform the response to match frontend expectations
     const transformedArticle = {
@@ -126,14 +151,31 @@ router.post('/', [verifyToken, upload.single('image')], async (req, res) => {
 
     res.status(201).json(transformedArticle);
   } catch (error) {
-    console.error('Error creating article:', error);
+    console.error('Error creating article:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    
     if (error.name === 'ValidationError') {
       return res.status(400).json({
         message: 'Validation error',
         error: Object.values(error.errors).map(err => err.message).join(', ')
       });
     }
-    res.status(500).json({ message: 'Error creating article', error: error.message });
+    
+    if (error.name === 'MulterError') {
+      return res.status(400).json({
+        message: 'File upload error',
+        error: error.message
+      });
+    }
+    
+    res.status(500).json({ 
+      message: 'Error creating article', 
+      error: error.message,
+      type: error.name
+    });
   }
 });
 

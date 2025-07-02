@@ -12,8 +12,7 @@ const ArticleCard = ({
   isDashboard = false,
 }) => {
   const navigate = useNavigate();
-  const { setArticles, token, isPublisherLoggedIn, removeArticle } =
-    useContext(articleContext);
+  const { isPublisherLoggedIn, removeArticle } = useContext(articleContext);
 
   const [error, setError] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);

@@ -208,6 +208,16 @@ export const ArticleProvider = ({ children }) => {
     console.log("Logout: Completed, all states cleared");
   };
 
+  // Function to remove an article from the state
+  const removeArticle = (articleId) => {
+    console.log("Removing article:", articleId);
+    setArticles(prevArticles => {
+      const updatedArticles = prevArticles.filter(article => article.id !== articleId);
+      console.log("Articles after removal:", updatedArticles.length);
+      return updatedArticles;
+    });
+  };
+
   // Custom setToken function that also updates localStorage
   const updateToken = (newToken) => {
     console.log("Token Update: Processing new token");
@@ -262,10 +272,11 @@ export const ArticleProvider = ({ children }) => {
     setToken,
     updateToken,
     logout,
-    popular,
     loading,
     error,
+    popular,
     fetchArticles,
+    removeArticle
   };
 
   return (
