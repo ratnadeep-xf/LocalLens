@@ -12,12 +12,13 @@ const ArticleCard = ({
   isDashboard = false,
 }) => {
   const navigate = useNavigate();
-  const { setArticles, token, isPublisherLoggedIn } =
+  const { setArticles, token, isPublisherLoggedIn, removeArticle } =
     useContext(articleContext);
 
   const [error, setError] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const handleClick = () => {
     console.log(`Navigating to article: ${article.title}`);
@@ -30,38 +31,20 @@ const ArticleCard = ({
   };
 
   const handleDelete = async () => {
-    if (!isPublisherLoggedIn || isDeleting) {
-      return;
-    }
-
     try {
+      setDeleteError('');
       setIsDeleting(true);
-      console.log("Attempting to delete article:", article.id);
 
       await apiCall(ARTICLE_ENDPOINTS.delete(article.id), {
-        method: "DELETE",
+        method: 'DELETE'
       });
 
-      // Remove article from state
-      setArticles((prevArticles) => {
-        console.log("Current articles:", prevArticles.length);
-        const updatedArticles = prevArticles.filter((a) => {
-          const shouldKeep = a.id !== article.id;
-          if (!shouldKeep) {
-            console.log("Removing article:", a.id, a.title);
-          }
-          return shouldKeep;
-        });
-        console.log("Articles after deletion:", updatedArticles.length);
-        return updatedArticles;
-      });
-
-      setError(null);
-      console.log("Article deleted successfully:", article.id);
-      setShowModal(false); // Close modal after successful deletion
-    } catch (err) {
-      console.error("Error deleting article:", err);
-      setError(err.message || "Failed to delete article");
+      // Remove article from context
+      removeArticle(article.id);
+      toggleModal(); // Close the modal
+    } catch (error) {
+      console.error('Error deleting article:', error);
+      setDeleteError(error.message || 'Error deleting article');
     } finally {
       setIsDeleting(false);
     }
@@ -156,7 +139,7 @@ const ArticleCard = ({
       </div>
       {showModal && (
         <DeleteModal
-          error={error}
+          error={deleteError}
           isDeleting={isDeleting}
           onDelete={handleDelete}
           onCancel={toggleModal}

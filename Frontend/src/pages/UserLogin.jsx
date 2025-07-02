@@ -16,6 +16,7 @@ const UserLogin = () => {
     setLoggedUserId,
     setLoggedUser,
     updateToken,
+    setregionAvailable,
   } = useContext(articleContext);
 
   const navigate = useNavigate();
@@ -39,37 +40,54 @@ const UserLogin = () => {
     try {
       setErrorMsg(''); // Clear any previous errors
       console.log("User Signup: Attempting registration", { email: data.email });
-      
-      const response = await apiCall(AUTH_ENDPOINTS.userRegister, {
+
+      // Validate regions
+      if (!data.preferredRegions || data.preferredRegions.length === 0) {
+        throw new Error('Please select at least one region');
+      }
+
+      const selectedValues = data.preferredRegions.map((opt) => opt.value);
+      let regions = selectedValues;
+
+      // Handle new region if "other" is selected
+      if (selectedValues.includes("other")) {
+        if (!data.newRegion || !data.newRegion.trim()) {
+          throw new Error('Please enter a name for the new region');
+        }
+        const newRegion = data.newRegion.trim();
+        regions = selectedValues.map(r => r === "other" ? newRegion : r);
+
+        // Add new region to the options list if it doesn't exist
+        const alreadyExists = regionAvailable.some(
+          (opt) => opt.value.toLowerCase() === newRegion.toLowerCase()
+        );
+
+        if (!alreadyExists) {
+          const newOption = {
+            value: newRegion,
+            label: newRegion.charAt(0).toUpperCase() + newRegion.slice(1),
+          };
+          setregionAvailable((prev) => [...prev, newOption]);
+        }
+      }
+
+      const result = await apiCall(AUTH_ENDPOINTS.userRegister, {
         method: 'POST',
         body: JSON.stringify({
           name: data.name,
           email: data.email,
           password: data.password,
-          preferredRegions: data.preferredRegions ? data.preferredRegions.map((r) => r.value) : [],
+          preferredRegions: regions.filter(r => r !== 'other'), // Remove 'other' from regions
         }),
       });
 
-      // First check if the response is ok
-      if (!response.ok) {
-        const errorData = await response.json();
-        if (errorData.errors && Array.isArray(errorData.errors)) {
-          // Join multiple validation errors into a single message
-          throw new Error(errorData.errors.join(', '));
-        }
-        throw new Error(errorData.message || 'Error during registration');
-      }
-
-      const result = await response.json();
       console.log("User Signup: Registration successful", {
         userId: result.user.id,
         name: result.user.name
       });
 
-      // First update the token - this will trigger the auth check effect
+      // Update token and user states
       updateToken(result.token);
-      
-      // Then update user states
       setLoggedUserId(result.user.id);
       setLoggedUser(result.user);
       setisUserLoggedIn(true);
@@ -80,7 +98,7 @@ const UserLogin = () => {
         user: result.user,
         hasToken: !!result.token
       });
-      
+
       navigate('/');
     } catch (error) {
       console.error('User Signup: Error during registration:', error);
@@ -93,8 +111,8 @@ const UserLogin = () => {
     try {
       setErrorMsg(''); // Clear any previous errors
       console.log("User Login: Attempting login", { email: data.email });
-      
-      const response = await apiCall(AUTH_ENDPOINTS.userLogin, {
+
+      const result = await apiCall(AUTH_ENDPOINTS.userLogin, {
         method: 'POST',
         body: JSON.stringify({
           email: data.email,
@@ -102,33 +120,24 @@ const UserLogin = () => {
         }),
       });
 
-      // First check if the response is ok
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Invalid credentials');
-      }
-
-      const result = await response.json();
       console.log("User Login: Login successful", {
         userId: result.user.id,
         name: result.user.name
       });
 
-      // First update the token - this will trigger the auth check effect
+      // Update token and user states
       updateToken(result.token);
-      
-      // Then update user states
       setLoggedUserId(result.user.id);
       setLoggedUser(result.user);
       setisUserLoggedIn(true);
-      
+
       console.log("User Login: States updated", {
         isUserLoggedIn: true,
         userId: result.user.id,
         user: result.user,
         hasToken: !!result.token
       });
-      
+
       navigate('/');
     } catch (error) {
       console.error('User Login: Error during login:', error);

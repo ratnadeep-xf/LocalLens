@@ -19,6 +19,8 @@ const Engagement = ({ article }) => {
   const [newComment, setnewComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [voteError, setVoteError] = useState('');
+  const [commentError, setCommentError] = useState('');
 
   // Always get the latest article from context
   const latestArticle = articles.find((a) => a.id === article.id) || article;
@@ -35,16 +37,17 @@ const Engagement = ({ article }) => {
     }
   }, [latestArticle.engagement.votesArray, loggedUserId]);
 
-  const handleVote = async (type) => {
-    if (!isUserLoggedIn) {
-      setError("Please login to vote");
-      return;
-    }
-
+  const handleVote = async (value) => {
     try {
+      setVoteError('');
+      if (!isUserLoggedIn) {
+        setVoteError('Please log in to vote');
+        return;
+      }
+
       const data = await apiCall(ARTICLE_ENDPOINTS.vote(article.id), {
-        method: "POST",
-        body: JSON.stringify({ type }),
+        method: 'POST',
+        body: JSON.stringify({ value }),
       });
 
       // Update articles in context
@@ -58,30 +61,32 @@ const Engagement = ({ article }) => {
       const newVoteArray = data.engagement.votesArray;
       const userVoteEntry = newVoteArray.find(vote => vote.userId === loggedUserId);
       setUserVote(userVoteEntry ? (userVoteEntry.value === 1 ? "up" : "down") : null);
-
-    } catch (err) {
-      setError(err.message || "Failed to vote");
-      if (err.message.includes('Token') || err.message.includes('authentication')) {
+    } catch (error) {
+      console.error('Error voting:', error);
+      setVoteError(error.message || 'Error submitting vote');
+      if (error.message.includes('Token') || error.message.includes('authentication')) {
         logout();
       }
     }
   };
 
-  const handleClick = async () => {
-    if (!isUserLoggedIn) {
-      setError("Please login to comment");
-      return;
-    }
-    if (!newComment.trim() || isSubmitting) return;
-
+  const handleComment = async (e) => {
+    e.preventDefault();
     try {
-      setIsSubmitting(true);
-      setError(null);
-      console.log("Attempting to post comment as authenticated user");
+      setCommentError('');
+      if (!isUserLoggedIn) {
+        setCommentError('Please log in to comment');
+        return;
+      }
+
+      if (!newComment.trim()) {
+        setCommentError('Comment cannot be empty');
+        return;
+      }
 
       const data = await apiCall(ARTICLE_ENDPOINTS.comment(article.id), {
-        method: "POST",
-        body: JSON.stringify({ content: newComment.trim() }),
+        method: 'POST',
+        body: JSON.stringify({ content: newComment }),
       });
 
       // Update articles in context
@@ -93,15 +98,12 @@ const Engagement = ({ article }) => {
 
       // Clear comment input
       setnewComment("");
-
-    } catch (err) {
-      console.error('Error posting comment:', err);
-      setError(err.message || "Failed to post comment");
-      if (err.message.includes('Token') || err.message.includes('authentication')) {
+    } catch (error) {
+      console.error('Error commenting:', error);
+      setCommentError(error.message || 'Error submitting comment');
+      if (error.message.includes('Token') || error.message.includes('authentication')) {
         logout();
       }
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -110,16 +112,16 @@ const Engagement = ({ article }) => {
       {/* Voting Section */}
       <div className="bg-white rounded-xl shadow-card p-6">
         <h3 className="text-lg font-semibold text-neutral-900 mb-4">Rate this article</h3>
-        {error && (
+        {voteError && (
           <div className="mb-4 p-3 bg-accent-50 text-accent-700 rounded-lg">
-            {error}
+            {voteError}
           </div>
         )}
         {isUserLoggedIn && loggedUser ? (
           <div className="flex items-center justify-center space-x-8">
             <div className="text-center">
               <button
-                onClick={() => handleVote("up")}
+                onClick={(e) => { e.preventDefault(); handleVote("up"); }}
                 disabled={isSubmitting}
                 className={`flex items-center justify-center w-14 h-14 rounded-full border-2 transition-all duration-200 ${
                   userVote === "up"
@@ -139,7 +141,7 @@ const Engagement = ({ article }) => {
             
             <div className="text-center">
               <button
-                onClick={() => handleVote("down")}
+                onClick={(e) => { e.preventDefault(); handleVote("down"); }}
                 disabled={isSubmitting}
                 className={`flex items-center justify-center w-14 h-14 rounded-full border-2 transition-all duration-200 ${
                   userVote === "down"
@@ -214,9 +216,9 @@ const Engagement = ({ article }) => {
         <div className="border-t border-neutral-100 pt-6">
           {isUserLoggedIn ? (
             <div className="space-y-3">
-              {error && (
+              {commentError && (
                 <div className="p-3 bg-accent-50 text-accent-700 rounded-lg">
-                  {error}
+                  {commentError}
                 </div>
               )}
               <textarea
@@ -230,7 +232,7 @@ const Engagement = ({ article }) => {
               />
               <div className="flex justify-end">
                 <button
-                  onClick={handleClick}
+                  onClick={handleComment}
                   disabled={!newComment.trim() || isSubmitting}
                   className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:bg-neutral-300 disabled:cursor-not-allowed transition-colors duration-200"
                 >

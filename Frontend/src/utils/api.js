@@ -12,21 +12,40 @@ export const defaultFetchOptions = {
 
 // Helper function to make API calls
 export const apiCall = async (url, options = {}) => {
-  const response = await fetch(url, {
-    ...defaultFetchOptions,
-    ...options,
-    headers: {
-      ...defaultFetchOptions.headers,
-      ...options.headers,
-    },
-  });
-  
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'An error occurred' }));
-    throw new Error(error.message || 'An error occurred');
+  try {
+    const response = await fetch(url, {
+      ...defaultFetchOptions,
+      ...options,
+      headers: {
+        ...defaultFetchOptions.headers,
+        ...options.headers,
+      },
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      // If the server returned an error message, use it
+      if (data.message) {
+        throw new Error(data.message);
+      }
+      // If there are validation errors, combine them
+      if (data.errors && Array.isArray(data.errors)) {
+        throw new Error(data.errors.join(', '));
+      }
+      // Generic error based on status
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return data;
+  } catch (error) {
+    // If it's already an Error object (from above), just rethrow it
+    if (error instanceof Error) {
+      throw error;
+    }
+    // For network errors or other issues
+    throw new Error('Network error or invalid JSON response');
   }
-  
-  return response.json();
 };
 
 // Auth endpoints

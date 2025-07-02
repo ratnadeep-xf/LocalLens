@@ -91,7 +91,7 @@ const PublisherLogin = () => {
         throw new Error('Phone number must be exactly 10 digits');
       }
 
-      const response = await apiCall(AUTH_ENDPOINTS.publisherRegister, {
+      const result = await apiCall(AUTH_ENDPOINTS.publisherRegister, {
         method: 'POST',
         body: JSON.stringify({
           agencyName: data.agency_name,
@@ -103,23 +103,12 @@ const PublisherLogin = () => {
         }),
       });
 
-      // First check if the response is ok
-      if (!response.ok) {
-        const errorData = await response.json();
-        if (errorData.errors && Array.isArray(errorData.errors)) {
-          // Join multiple validation errors into a single message
-          throw new Error(errorData.errors.join(', '));
-        }
-        throw new Error(errorData.message || 'Error during registration');
-      }
-
-      const result = await response.json();
       console.log("Publisher Signup: Registration successful", {
         publisherId: result.publisher.id,
         agencyName: result.publisher.agencyName
       });
 
-      // First update the token - this will trigger the auth check effect
+      // First update the token
       updateToken(result.token);
       
       // Then update publisher states
@@ -147,7 +136,7 @@ const PublisherLogin = () => {
       setErrorMsg(''); // Clear any previous errors
       console.log("Publisher Login: Attempting login", { email: data.email });
       
-      const response = await apiCall(AUTH_ENDPOINTS.publisherLogin, {
+      const result = await apiCall(AUTH_ENDPOINTS.publisherLogin, {
         method: 'POST',
         body: JSON.stringify({
           email: data.email,
@@ -155,19 +144,12 @@ const PublisherLogin = () => {
         }),
       });
 
-      // First check if the response is ok
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Invalid credentials');
-      }
-
-      const result = await response.json();
       console.log("Publisher Login: Login successful", {
         publisherId: result.publisher.id,
         agencyName: result.publisher.agencyName
       });
 
-      // First update the token - this will trigger the auth check effect
+      // First update the token
       updateToken(result.token);
       
       // Then update publisher states
