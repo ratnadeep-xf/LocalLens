@@ -322,7 +322,11 @@ const AddArticle = () => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex items-center gap-2 px-6 py-3 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 transition-colors duration-200"
+                className={`flex items-center gap-2 px-6 py-3 bg-primary-600 text-white font-semibold rounded-lg transition-all duration-200 ${
+                  isSubmitting 
+                    ? "opacity-70 cursor-not-allowed"
+                    : "hover:bg-primary-700"
+                }`}
               >
                 <Save className="w-4 h-4" />
                 {isSubmitting ? 'Publishing...' : 'Publish Article'}

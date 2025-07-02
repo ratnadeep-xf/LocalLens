@@ -18,7 +18,6 @@ const Engagement = ({ article }) => {
   const [userVote, setUserVote] = useState(null);
   const [newComment, setnewComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState(null);
   const [voteError, setVoteError] = useState('');
   const [commentError, setCommentError] = useState('');
 
@@ -33,6 +32,8 @@ const Engagement = ({ article }) => {
       );
       if (existingVote) {
         setUserVote(existingVote.value === 1 ? "up" : "down");
+      } else {
+        setUserVote(null);
       }
     }
   }, [latestArticle.engagement.votesArray, loggedUserId]);
@@ -40,14 +41,17 @@ const Engagement = ({ article }) => {
   const handleVote = async (value) => {
     try {
       setVoteError('');
+      setIsSubmitting(true);
+
       if (!isUserLoggedIn) {
         setVoteError('Please log in to vote');
         return;
       }
 
+      const voteValue = value === "up" ? 1 : -1;
       const data = await apiCall(ARTICLE_ENDPOINTS.vote(article.id), {
         method: 'POST',
-        body: JSON.stringify({ value }),
+        body: JSON.stringify({ value: voteValue })
       });
 
       // Update articles in context
@@ -61,12 +65,15 @@ const Engagement = ({ article }) => {
       const newVoteArray = data.engagement.votesArray;
       const userVoteEntry = newVoteArray.find(vote => vote.userId === loggedUserId);
       setUserVote(userVoteEntry ? (userVoteEntry.value === 1 ? "up" : "down") : null);
+
     } catch (error) {
       console.error('Error voting:', error);
       setVoteError(error.message || 'Error submitting vote');
       if (error.message.includes('Token') || error.message.includes('authentication')) {
         logout();
       }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -74,6 +81,8 @@ const Engagement = ({ article }) => {
     e.preventDefault();
     try {
       setCommentError('');
+      setIsSubmitting(true);
+
       if (!isUserLoggedIn) {
         setCommentError('Please log in to comment');
         return;
@@ -86,7 +95,7 @@ const Engagement = ({ article }) => {
 
       const data = await apiCall(ARTICLE_ENDPOINTS.comment(article.id), {
         method: 'POST',
-        body: JSON.stringify({ content: newComment }),
+        body: JSON.stringify({ content: newComment.trim() })
       });
 
       // Update articles in context
@@ -98,12 +107,15 @@ const Engagement = ({ article }) => {
 
       // Clear comment input
       setnewComment("");
+
     } catch (error) {
       console.error('Error commenting:', error);
       setCommentError(error.message || 'Error submitting comment');
       if (error.message.includes('Token') || error.message.includes('authentication')) {
         logout();
       }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -176,9 +188,56 @@ const Engagement = ({ article }) => {
           </span>
         </div>
 
-        <div className="space-y-4 mb-6">
+        {/* Comment Form */}
+        {isUserLoggedIn && loggedUser ? (
+          <form onSubmit={handleComment} className="mb-6">
+            {commentError && (
+              <div className="mb-4 p-3 bg-accent-50 text-accent-700 rounded-lg">
+                {commentError}
+              </div>
+            )}
+            <div className="flex space-x-4">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
+                  <User className="h-5 w-5 text-primary-600" />
+                </div>
+              </div>
+              <div className="flex-grow">
+                <div className="relative">
+                  <textarea
+                    value={newComment}
+                    onChange={(e) => setnewComment(e.target.value)}
+                    placeholder="Add a comment..."
+                    className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200 min-h-[100px]"
+                    disabled={isSubmitting}
+                  />
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || !newComment.trim()}
+                    className={`absolute bottom-3 right-3 p-2 rounded-full transition-all duration-200 ${
+                      newComment.trim() && !isSubmitting
+                        ? "bg-primary-500 text-white hover:bg-primary-600"
+                        : "bg-neutral-100 text-neutral-400 cursor-not-allowed"
+                    }`}
+                  >
+                    <Send className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </form>
+        ) : (
+          <div className="text-center py-8 bg-neutral-50 rounded-lg mb-6">
+            <p className="text-neutral-500">Please log in as a reader to comment on this article.</p>
+          </div>
+        )}
+
+        {/* Comments List */}
+        <div className="space-y-4">
           {latestArticle.engagement.commentsArray.length > 0 ? (
-            latestArticle.engagement.commentsArray.map((comment, index) => (
+            [...latestArticle.engagement.commentsArray]
+              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+              .map((comment, index) => (
               <div
                 key={`${comment.userId}-${comment.createdAt}-${index}`}
                 className="border-b border-neutral-100 pb-4 last:border-b-0 last:pb-0"
@@ -192,58 +251,20 @@ const Engagement = ({ article }) => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2 mb-1">
                       <span className="text-sm font-semibold text-neutral-900">
-                        {comment.userName ? comment.userName : "Anonymous User"}
+                        {comment.userName || "Anonymous User"}
                       </span>
                       <span className="text-xs text-neutral-500">
                         {format(new Date(comment.createdAt), "MMM d, h:mm a")}
                       </span>
                     </div>
-                    <p className="text-sm text-neutral-700 leading-relaxed">
-                      {comment.content}
-                    </p>
+                    <p className="text-neutral-700 whitespace-pre-wrap">{comment.content}</p>
                   </div>
                 </div>
               </div>
             ))
           ) : (
-            <div className="text-center py-8 text-neutral-500">
-              No comments yet. Be the first to share your thoughts!
-            </div>
-          )}
-        </div>
-
-        {/* Add Comment Input */}
-        <div className="border-t border-neutral-100 pt-6">
-          {isUserLoggedIn ? (
-            <div className="space-y-3">
-              {commentError && (
-                <div className="p-3 bg-accent-50 text-accent-700 rounded-lg">
-                  {commentError}
-                </div>
-              )}
-              <textarea
-                placeholder="Share your thoughts on this article..."
-                value={newComment}
-                className="w-full p-4 border border-neutral-200 rounded-lg resize-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200"
-                rows="3"
-                onChange={(e) => {
-                  setnewComment(e.target.value);
-                }}
-              />
-              <div className="flex justify-end">
-                <button
-                  onClick={handleComment}
-                  disabled={!newComment.trim() || isSubmitting}
-                  className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:bg-neutral-300 disabled:cursor-not-allowed transition-colors duration-200"
-                >
-                  <Send className="w-4 h-4" />
-                  {isSubmitting ? 'Posting...' : 'Post Comment'}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-6 bg-neutral-50 rounded-lg">
-              <p className="text-neutral-500">Please log in to add a comment.</p>
+            <div className="text-center py-8">
+              <p className="text-neutral-500">No comments yet. Be the first to comment!</p>
             </div>
           )}
         </div>

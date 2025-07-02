@@ -24,6 +24,7 @@ const UserLogin = () => {
   // State to manage the current mode (signup or signin)
   const [mode, setMode] = useState("signup");
   const [errorMsg, setErrorMsg] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Initialize form methods from react-hook-form
   const {
@@ -38,6 +39,7 @@ const UserLogin = () => {
   // Function to handle new user data during sign-up
   const newData = async (data) => {
     try {
+      setIsSubmitting(true);
       setErrorMsg(''); // Clear any previous errors
       console.log("User Signup: Attempting registration", { email: data.email });
 
@@ -103,12 +105,15 @@ const UserLogin = () => {
     } catch (error) {
       console.error('User Signup: Error during registration:', error);
       setErrorMsg(error.message || 'Error connecting to the server. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   // Function to validate user data during sign-in
   const validateData = async (data) => {
     try {
+      setIsSubmitting(true);
       setErrorMsg(''); // Clear any previous errors
       console.log("User Login: Attempting login", { email: data.email });
 
@@ -142,6 +147,8 @@ const UserLogin = () => {
     } catch (error) {
       console.error('User Login: Error during login:', error);
       setErrorMsg(error.message || 'Error connecting to the server. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -321,9 +328,14 @@ const UserLogin = () => {
 
               <button
                 type="submit"
-                className="w-full bg-primary-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-primary-700 transition-colors duration-200"
+                disabled={isSubmitting}
+                className={`w-full bg-primary-600 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 ${
+                  isSubmitting 
+                    ? "opacity-70 cursor-not-allowed"
+                    : "hover:bg-primary-700"
+                }`}
               >
-                Create Account
+                {isSubmitting ? "Creating Account..." : "Create Account"}
               </button>
             </form>
           )}
@@ -372,9 +384,14 @@ const UserLogin = () => {
 
               <button
                 type="submit"
-                className="w-full bg-primary-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-primary-700 transition-colors duration-200"
+                disabled={isSubmitting}
+                className={`w-full bg-primary-600 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 ${
+                  isSubmitting 
+                    ? "opacity-70 cursor-not-allowed"
+                    : "hover:bg-primary-700"
+                }`}
               >
-                Sign In
+                {isSubmitting ? "Signing In..." : "Sign In"}
               </button>
             </form>
           )}

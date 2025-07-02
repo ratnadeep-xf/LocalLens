@@ -46,9 +46,12 @@ const PublisherLogin = () => {
     name: "preferredRegions",
   });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   // Function to handle new publisher data during sign-up
   const newData = async (data) => {
     try {
+      setIsSubmitting(true);
       setErrorMsg(''); // Clear any previous errors
       console.log("Publisher Signup: Attempting registration", { 
         email: data.email,
@@ -127,12 +130,15 @@ const PublisherLogin = () => {
     } catch (error) {
       console.error('Publisher Signup: Error during registration:', error);
       setErrorMsg(error.message || 'Error connecting to the server. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   // Function to validate publisher data during sign-in
   const validateData = async (data) => {
     try {
+      setIsSubmitting(true);
       setErrorMsg(''); // Clear any previous errors
       console.log("Publisher Login: Attempting login", { email: data.email });
       
@@ -168,6 +174,8 @@ const PublisherLogin = () => {
     } catch (error) {
       console.error('Publisher Login: Error during login:', error);
       setErrorMsg(error.message || 'Error connecting to the server. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -409,9 +417,14 @@ const PublisherLogin = () => {
 
               <button
                 type="submit"
-                className="w-full bg-primary-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-primary-700 transition-colors duration-200"
+                disabled={isSubmitting}
+                className={`w-full bg-primary-600 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 ${
+                  isSubmitting 
+                    ? "opacity-70 cursor-not-allowed"
+                    : "hover:bg-primary-700"
+                }`}
               >
-                Create Publisher Account
+                {isSubmitting ? "Creating Publisher Account..." : "Create Publisher Account"}
               </button>
             </form>
           )}
@@ -460,9 +473,14 @@ const PublisherLogin = () => {
 
               <button
                 type="submit"
-                className="w-full bg-primary-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-primary-700 transition-colors duration-200"
+                disabled={isSubmitting}
+                className={`w-full bg-primary-600 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 ${
+                  isSubmitting 
+                    ? "opacity-70 cursor-not-allowed"
+                    : "hover:bg-primary-700"
+                }`}
               >
-                Sign In
+                {isSubmitting ? "Signing In..." : "Sign In"}
               </button>
             </form>
           )}
