@@ -9,23 +9,27 @@ import Dashboard from "./pages/Dashboard";
 import ArticlePage from "./pages/ArticlePage";
 import { ArticleProvider } from "./context/articleContext";
 import DeleteModal from "./components/DeleteModal";
+import Footer from "./components/Footer";
 
 function App() {
   return (
     <>
       <ArticleProvider>
-        <main className="main-content">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/user-login" element={<UserLogin />} />
-            <Route path="/publisher-login" element={<PublisherLogin />} />
-            <Route path="/add-article" element={<AddArticle />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/article/:id" element={<ArticlePage />} />
-            <Route path="/delete-article" element={<DeleteModal />} />
-            <Route path="*" element={<h1>Page Not Found</h1>} />
-          </Routes>
-        </main>
+        <div className="flex flex-col min-h-screen">
+          <main className="main-content flex-grow">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/user-login" element={<UserLogin />} />
+              <Route path="/publisher-login" element={<PublisherLogin />} />
+              <Route path="/add-article" element={<AddArticle />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/article/:id" element={<ArticlePage />} />
+              <Route path="/delete-article" element={<DeleteModal />} />
+              <Route path="*" element={<h1>Page Not Found</h1>} />
+            </Routes>
+          </main>
+          <Footer />
+        </div>
       </ArticleProvider>
     </>
   );

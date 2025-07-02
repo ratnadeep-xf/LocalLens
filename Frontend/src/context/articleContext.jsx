@@ -17,7 +17,12 @@ export const ArticleProvider = ({ children }) => {
   const [popular, setpopular] = useState([]);
 
   // UI states
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(() => {
+    // Initialize with today's date at start of day (midnight)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);  // Set to midnight
+    return today;
+  });
   const [regionAvailable, setregionAvailable] = useState([
     { value: "all", label: "All Regions" },
   ]);
@@ -36,10 +41,25 @@ export const ArticleProvider = ({ children }) => {
   // Function to fetch articles
   const fetchArticles = async () => {
     setLoading(true);
-    try {
-      const data = await apiCall(ARTICLE_ENDPOINTS.getAll);
+    try {  
+      // Build query parameters
+      const params = new URLSearchParams();
+      
+      // Add date parameter in DD-MM-YYYY format
+      if (selectedDate) {
+        const day = String(selectedDate.getDate()).padStart(2, '0');
+        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+        const year = selectedDate.getFullYear();
+        const formattedDate = `${day}-${month}-${year}`;
+        params.append('date', formattedDate);
+      }
+
+      // Construct URL with query parameters
+      const url = `${ARTICLE_ENDPOINTS.getAll}${params.toString() ? `?${params.toString()}` : ''}`;
+      const data = await apiCall(url);
       setArticles(data);
     } catch (err) {
+      console.error('Error in fetchArticles:', err);
       setError(err.message || "Failed to fetch articles");
     } finally {
       setLoading(false);
@@ -48,14 +68,13 @@ export const ArticleProvider = ({ children }) => {
 
   // Log articles whenever they change
   useEffect(() => {
-    console.log("Articles updated:", articles.length);
+    console.log("Articles fetched:", articles.length);
   }, [articles]);
 
-  // Fetch articles on mount and auth changes
+  // Fetch articles only when date changes
   useEffect(() => {
-    console.log("Fetching articles...");
     fetchArticles();
-  }, []);
+  }, [selectedDate]);
 
   // Sync token with localStorage
   useEffect(() => {
@@ -95,7 +114,7 @@ export const ArticleProvider = ({ children }) => {
     const checkAuth = async () => {
       const storedToken = localStorage.getItem("token");
       
-      // If no token, clear all auth states
+      // If no token, clear all auth states and fetch articles
       if (!storedToken) {
         setToken(null);
         setisUserLoggedIn(false);
@@ -105,7 +124,7 @@ export const ArticleProvider = ({ children }) => {
         setLoggedUserId(null);
         setloggedPublisherId(null);
         console.log("Auth State: No token, cleared all auth states");
-        return;
+        return; // Don't fetch here, let the filter effect handle it
       }
 
       try {

@@ -11,10 +11,30 @@ const mongoose = require('mongoose');
 // Get all articles
 router.get('/', async (req, res) => {
   try {
-    const articles = await Article.find()
-      .sort({ createdAt: -1 });
+    const { date } = req.query;
+    
+    console.log('Received query params:', { date });
+    
+    // Build query object with strict matching
+    const query = {};
+    
+    
+    // Add date filter with exact string matching
+    if (date) {
+      // Ensure date is in DD-MM-YYYY format
+      if (!/^\d{2}-\d{2}-\d{4}$/.test(date)) {
+        return res.status(400).json({ 
+          message: 'Invalid date format. Use DD-MM-YYYY' 
+        });
+      }
+      query.date = date;
+      console.log('Filtering by exact date:', date);
+    }
 
-    console.log('Found articles:', articles.length);
+    console.log('Final MongoDB query:', JSON.stringify(query, null, 2));
+
+    const articles = await Article.find(query)
+      .sort({ createdAt: -1 });
 
     // Transform the response to match frontend expectations
     const transformedArticles = articles.map(article => ({
@@ -28,7 +48,7 @@ router.get('/', async (req, res) => {
       engagement: article.engagement
     }));
 
-    console.log('Transformed articles:', transformedArticles.length);
+    console.log('Sending transformed articles:', transformedArticles.length);
     res.json(transformedArticles);
   } catch (error) {
     console.error('Error fetching articles:', error);

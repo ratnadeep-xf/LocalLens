@@ -122,10 +122,18 @@ const Filters = ({ isDashboard = false, publisherId }) => {
           <div className="relative">
             <DatePicker
               selected={selectedDate}
-              onChange={(date) => setSelectedDate(date)}
+              onChange={(date) => {
+                // Ensure the date is set to midnight
+                const newDate = new Date(date);
+                newDate.setHours(0, 0, 0, 0);
+                setSelectedDate(newDate);
+              }}
               dateFormat="dd/MM/yyyy"
               className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200"
               calendarClassName="shadow-lg border-0 rounded-xl"
+              showTimeSelect={false}
+              timeIntervals={60}
+              timeCaption="Time"
             />
             <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" />
           </div>
