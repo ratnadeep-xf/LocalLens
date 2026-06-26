@@ -221,6 +221,12 @@ router.delete('/:id', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'Article not found' });
     }
 
+    if (article.publisher.toString() !== req.publisher._id.toString()) {
+      return res.status(403).json({ 
+        message: "Forbidden. You can only delete your own articles." 
+      });
+    }
+
     // Delete only if article exists and matches the exact ID
     const result = await Article.deleteOne({
       _id: req.params.id

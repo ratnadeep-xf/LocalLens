@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const { v4: uuidv4 } = require('uuid');
 
 const articleSchema = new mongoose.Schema({
   title: {
@@ -96,6 +95,10 @@ const articleSchema = new mongoose.Schema({
   timestamps: true
 });
 
+articleSchema.index({ region: 1 });
+articleSchema.index({ date: 1 });
+articleSchema.index({ publisher: 1 });
+
 // Virtual for formatted date
 articleSchema.virtual('formattedDate').get(function() {
   return this.date; // Already in dd-mm-yyyy format
@@ -132,30 +135,6 @@ articleSchema.pre('save', function(next) {
 
   next();
 });
-
-// Drop all indexes and recreate them
-const dropIndexes = async () => {
-  try {
-    await mongoose.model('Article').collection.dropIndexes();
-    console.log('Successfully dropped Article indexes');
-  } catch (error) {
-    console.error('Error dropping Article indexes:', error);
-  }
-};
-
-// Call dropIndexes when the model is compiled and when the application starts
-articleSchema.post('compile', () => {
-  dropIndexes();
-});
-
-// Also drop indexes immediately when this file is required
-if (mongoose.connection.readyState === 1) { // If already connected
-  dropIndexes();
-} else {
-  mongoose.connection.once('connected', () => {
-    dropIndexes();
-  });
-}
 
 const Article = mongoose.model('Article', articleSchema);
 
