@@ -1,14 +1,13 @@
+const dotenv = require("dotenv");
+// Must run before any local require that transitively loads utils/redis.js
+dotenv.config();
+
 const express = require("express");
 const cookieParser = require("cookie-parser");
-const dotenv = require("dotenv");
 const connectDB = require("./config/db");
-const routes = require("./routes");
 const path = require("path");
 const fs = require("fs");
 const cors = require("cors");
-
-// Load environment variables
-dotenv.config();
 
 // Verify environment variables
 if (!process.env.MONGODB_URI) {
@@ -35,6 +34,21 @@ if (
   );
   process.exit(1);
 }
+
+// Verify Upstash Redis environment variables
+if (!process.env.UPSTASH_REDIS_REST_URL) {
+  console.error("UPSTASH_REDIS_REST_URL is not defined in environment variables");
+  process.exit(1);
+}
+
+if (!process.env.UPSTASH_REDIS_REST_TOKEN) {
+  console.error("UPSTASH_REDIS_REST_TOKEN is not defined in environment variables");
+  process.exit(1);
+}
+
+// Load routes only after env is validated — avoids Upstash client
+// instantiation with undefined/empty credentials when fail-fasting
+const routes = require("./routes");
 
 // Initialize express
 const app = express();

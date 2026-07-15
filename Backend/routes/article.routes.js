@@ -4,9 +4,22 @@ const { Article } = require('../models');
 const { verifyToken } = require('../middleware/auth');
 const upload = require('../middleware/multer.middleware');
 const { uploadOnCloudinary } = require('../utils/cloudinary');
+const { getCache, setCache, deleteCache } = require('../utils/redis');
 const mongoose = require('mongoose');
 
 // Base path: /VITE_API_URL/articles
+
+// Shared response shape for article read endpoints
+const toArticleDTO = (article) => ({
+  id: article._id,
+  title: article.title,
+  content: article.content,
+  imageUrl: article.imageUrl,
+  region: article.region,
+  date: article.formattedDate,
+  publisher: article.publisherName,
+  engagement: article.engagement
+});
 
 // Get all articles
 router.get('/', async (req, res) => {
@@ -31,22 +44,27 @@ router.get('/', async (req, res) => {
       console.log('Filtering by exact date:', date);
     }
 
+    // Cache-aside: key only after date validation succeeds
+    const cacheKey = date
+      ? `articles:list:date:${date}`
+      : 'articles:list:all';
+
+    const cached = await getCache(cacheKey);
+    if (cached !== null) {
+      console.log(`[cache] HIT ${cacheKey}`);
+      return res.json(cached);
+    }
+    console.log(`[cache] MISS ${cacheKey}`);
+
     console.log('Final MongoDB query:', JSON.stringify(query, null, 2));
 
     const articles = await Article.find(query)
       .sort({ createdAt: -1 });
 
     // Transform the response to match frontend expectations
-    const transformedArticles = articles.map(article => ({
-      id: article._id,
-      title: article.title,
-      content: article.content,
-      imageUrl: article.imageUrl,
-      region: article.region,
-      date: article.formattedDate,
-      publisher: article.publisherName,
-      engagement: article.engagement
-    }));
+    const transformedArticles = articles.map(toArticleDTO);
+
+    await setCache(cacheKey, transformedArticles, 300);
 
     console.log('Sending transformed articles:', transformedArticles.length);
     res.json(transformedArticles);
@@ -169,6 +187,14 @@ router.post('/', [verifyToken, upload.single('image')], async (req, res) => {
       engagement: savedArticle.engagement
     };
 
+    // Invalidate list caches after successful write.
+    // Known limitation: only articles:list:all and the directly-affected
+    // date key are cleared — not all possible date-scoped list keys.
+    await deleteCache([
+      'articles:list:all',
+      `articles:list:date:${savedArticle.date}`,
+    ]);
+
     res.status(201).json(transformedArticle);
   } catch (error) {
     console.error('Error creating article:', {
@@ -238,6 +264,15 @@ router.delete('/:id', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'Article not found' });
     }
 
+    // Invalidate list + single-article caches after successful delete.
+    // Known limitation: only articles:list:all and the directly-affected
+    // date key are cleared — not all possible date-scoped list keys.
+    await deleteCache([
+      'articles:list:all',
+      `articles:list:date:${article.date}`,
+      `article:id:${req.params.id}`,
+    ]);
+
     res.json({ message: 'Article deleted successfully', id: req.params.id });
   } catch (error) {
     console.error('Error deleting article:', error);
@@ -297,6 +332,15 @@ router.post('/:id/vote', verifyToken, async (req, res) => {
       engagement: article.engagement
     };
 
+    // Invalidate single-article + list caches after successful vote write.
+    // Known limitation: only articles:list:all and the directly-affected
+    // date key are cleared — not all possible date-scoped list keys.
+    await deleteCache([
+      `article:id:${req.params.id}`,
+      'articles:list:all',
+      `articles:list:date:${article.date}`,
+    ]);
+
     res.json(transformedArticle);
   } catch (error) {
     console.error('Error updating vote:', error);
@@ -341,10 +385,50 @@ router.post('/:id/comment', verifyToken, async (req, res) => {
       engagement: article.engagement
     };
 
+    // Invalidate single-article + list caches after successful comment write.
+    // Known limitation: only articles:list:all and the directly-affected
+    // date key are cleared — not all possible date-scoped list keys.
+    await deleteCache([
+      `article:id:${req.params.id}`,
+      'articles:list:all',
+      `articles:list:date:${article.date}`,
+    ]);
+
     res.json(transformedArticle);
   } catch (error) {
     console.error('Error adding comment:', error);
     res.status(500).json({ message: 'Error adding comment', error: error.message });
+  }
+});
+
+// Get single article by id (registered after /:id/vote and /:id/comment)
+router.get('/:id', async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(404).json({ message: 'Article not found' });
+    }
+
+    const cacheKey = `article:id:${req.params.id}`;
+    const cached = await getCache(cacheKey);
+    if (cached !== null) {
+      console.log(`[cache] HIT ${cacheKey}`);
+      return res.json(cached);
+    }
+    console.log(`[cache] MISS ${cacheKey}`);
+
+    const article = await Article.findById(req.params.id);
+
+    if (!article) {
+      return res.status(404).json({ message: 'Article not found' });
+    }
+
+    const transformedArticle = toArticleDTO(article);
+    await setCache(cacheKey, transformedArticle, 600);
+
+    res.json(transformedArticle);
+  } catch (error) {
+    console.error('Error fetching article:', error);
+    res.status(500).json({ message: 'Error fetching article', error: error.message });
   }
 });
 
