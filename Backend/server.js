@@ -53,6 +53,9 @@ const routes = require("./routes");
 // Initialize express
 const app = express();
 
+// Trust first proxy (Render) so req.ip reflects the real client IP
+app.set("trust proxy", 1);
+
 // Connect to MongoDB
 connectDB().catch((err) => {
   console.error("Failed to connect to MongoDB:", err);

@@ -3,6 +3,10 @@ const router = express.Router();
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { User, Publisher } = require("../models");
+const {
+  authLimiter,
+  rateLimitMiddleware,
+} = require("../middleware/rateLimit.middleware");
 
 // Verify token endpoint
 router.get("/verify", async (req, res) => {
@@ -159,7 +163,11 @@ router.post("/user-register", async (req, res) => {
 });
 
 // User Login - matches frontend /user-login
-router.post("/user-login", async (req, res) => {
+router.post(
+  "/user-login",
+  rateLimitMiddleware(authLimiter, (req) => `user-login:${req.ip}`),
+  async (req, res) => {
+
   try {
     const { email, password } = req.body;
 
@@ -196,7 +204,8 @@ router.post("/user-login", async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: "Error logging in", error: error.message });
   }
-});
+  }
+);
 
 // Publisher Registration
 router.post("/publisher-register", async (req, res) => {
@@ -252,7 +261,11 @@ router.post("/publisher-register", async (req, res) => {
 });
 
 // Publisher Login - matches frontend /publisher-login
-router.post("/publisher-login", async (req, res) => {
+router.post(
+  "/publisher-login",
+  rateLimitMiddleware(authLimiter, (req) => `publisher-login:${req.ip}`),
+  async (req, res) => {
+
   try {
     const { email, password } = req.body;
 
@@ -291,6 +304,7 @@ router.post("/publisher-login", async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: "Error logging in", error: error.message });
   }
-});
+  }
+);
 
 module.exports = router;

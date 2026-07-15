@@ -5,6 +5,12 @@ const { verifyToken } = require('../middleware/auth');
 const upload = require('../middleware/multer.middleware');
 const { uploadOnCloudinary } = require('../utils/cloudinary');
 const { getCache, setCache, deleteCache } = require('../utils/redis');
+const {
+  voteLimiter,
+  commentLimiter,
+  createLimiter,
+  rateLimitMiddleware,
+} = require('../middleware/rateLimit.middleware');
 const mongoose = require('mongoose');
 
 // Base path: /VITE_API_URL/articles
@@ -75,7 +81,14 @@ router.get('/', async (req, res) => {
 });
 
 // Create article (Publisher only)
-router.post('/', [verifyToken, upload.single('image')], async (req, res) => {
+router.post('/', [
+  verifyToken,
+  rateLimitMiddleware(
+    createLimiter,
+    (req) => req.publisher?._id?.toString() ?? req.ip
+  ),
+  upload.single('image'),
+], async (req, res) => {
   try {
     // Check if user is a publisher
     if (req.role !== 'publisher') {
@@ -281,7 +294,19 @@ router.delete('/:id', verifyToken, async (req, res) => {
 });
 
 // Add/Update vote (User only)
-router.post('/:id/vote', verifyToken, async (req, res) => {
+router.post(
+  '/:id/vote',
+  [
+    verifyToken,
+    rateLimitMiddleware(
+      voteLimiter,
+      (req) =>
+        req.user?._id?.toString() ||
+        req.publisher?._id?.toString() ||
+        req.ip
+    ),
+  ],
+  async (req, res) => {
   try {
     // Check if user is a reader
     if (req.role !== 'reader') {
@@ -349,7 +374,19 @@ router.post('/:id/vote', verifyToken, async (req, res) => {
 });
 
 // Add comment (User only)
-router.post('/:id/comment', verifyToken, async (req, res) => {
+router.post(
+  '/:id/comment',
+  [
+    verifyToken,
+    rateLimitMiddleware(
+      commentLimiter,
+      (req) =>
+        req.user?._id?.toString() ||
+        req.publisher?._id?.toString() ||
+        req.ip
+    ),
+  ],
+  async (req, res) => {
   try {
     // Check if user is a reader
     if (req.role !== 'reader') {
