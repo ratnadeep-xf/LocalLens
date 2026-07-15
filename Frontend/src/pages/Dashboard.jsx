@@ -15,6 +15,9 @@ const Dashboard = () => {
     loggedPublisherId,
     deleteArticle,
     setdeleteArticle,
+    hasMore,
+    isLoadingMore,
+    loadMoreArticles,
   } = useContext(articleContext);
 
   const loggedPublisherName =
@@ -156,6 +159,21 @@ const Dashboard = () => {
                 <Plus className="w-4 h-4" />
                 Create Your First Article
               </Link>
+            </div>
+          )}
+
+          {hasMore && (
+            <div className="flex justify-center mt-8">
+              <button
+                type="button"
+                onClick={loadMoreArticles}
+                disabled={isLoadingMore}
+                className={`px-4 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors duration-200 ${
+                  isLoadingMore ? "opacity-70 cursor-not-allowed" : ""
+                }`}
+              >
+                {isLoadingMore ? "Loading..." : "Load More"}
+              </button>
             </div>
           )}
         </div>

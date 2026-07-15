@@ -31,6 +31,9 @@ export const ArticleProvider = ({ children }) => {
   const [deleteArticle, setdeleteArticle] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // User/Publisher states
   const [loggedUserId, setLoggedUserId] = useState(null);
@@ -38,13 +41,17 @@ export const ArticleProvider = ({ children }) => {
   const [loggedUser, setLoggedUser] = useState(null);
   const [loggedPublisher, setloggedPublisher] = useState(null);
 
-  // Function to fetch articles
-  const fetchArticles = async () => {
-    setLoading(true);
-    try {  
+  // Function to fetch articles (replace without cursor; append with cursor)
+  const fetchArticles = async ({ cursor } = {}) => {
+    const isLoadMore = Boolean(cursor);
+    if (!isLoadMore) {
+      setLoading(true);
+    }
+    try {
       // Build query parameters
       const params = new URLSearchParams();
-      
+      params.append('limit', '10');
+
       // Add date parameter in DD-MM-YYYY format
       if (selectedDate) {
         const day = String(selectedDate.getDate()).padStart(2, '0');
@@ -54,15 +61,46 @@ export const ArticleProvider = ({ children }) => {
         params.append('date', formattedDate);
       }
 
+      if (cursor) {
+        params.append('cursor', cursor);
+      }
+
       // Construct URL with query parameters
-      const url = `${ARTICLE_ENDPOINTS.getAll}${params.toString() ? `?${params.toString()}` : ''}`;
+      const url = `${ARTICLE_ENDPOINTS.getAll}?${params.toString()}`;
       const data = await apiCall(url);
-      setArticles(data);
+      const {
+        articles: pageArticles,
+        nextCursor: responseNextCursor,
+        hasMore: responseHasMore,
+      } = data;
+
+      if (isLoadMore) {
+        setArticles((prev) => [...prev, ...pageArticles]);
+      } else {
+        setArticles(pageArticles);
+      }
+
+      setNextCursor(responseNextCursor ?? null);
+      setHasMore(Boolean(responseHasMore));
     } catch (err) {
       console.error('Error in fetchArticles:', err);
       setError(err.message || "Failed to fetch articles");
     } finally {
-      setLoading(false);
+      if (!isLoadMore) {
+        setLoading(false);
+      }
+    }
+  };
+
+  const loadMoreArticles = async () => {
+    if (!hasMore || isLoadingMore || !nextCursor) {
+      return;
+    }
+    setIsLoadingMore(true);
+    try {
+      await fetchArticles({ cursor: nextCursor });
+    } finally {
+      setIsLoadingMore(false);
     }
   };
 
@@ -71,8 +109,10 @@ export const ArticleProvider = ({ children }) => {
     console.log("Articles fetched:", articles.length);
   }, [articles]);
 
-  // Fetch articles only when date changes
+  // Fetch articles only when date changes (new pagination sequence)
   useEffect(() => {
+    setNextCursor(null);
+    setHasMore(true);
     fetchArticles();
   }, [selectedDate]);
 
@@ -294,7 +334,11 @@ export const ArticleProvider = ({ children }) => {
     loading,
     error,
     popular,
+    nextCursor,
+    hasMore,
+    isLoadingMore,
     fetchArticles,
+    loadMoreArticles,
     removeArticle
   };
 

@@ -27,33 +27,47 @@ const toArticleDTO = (article) => ({
   engagement: article.engagement
 });
 
-// Get all articles
+// Get all articles (cursor-paginated)
 router.get('/', async (req, res) => {
   try {
-    const { date } = req.query;
-    
-    console.log('Received query params:', { date });
-    
+    const { date, cursor } = req.query;
+
+    console.log('Received query params:', { date, cursor, limit: req.query.limit });
+
     // Build query object with strict matching
     const query = {};
-    
-    
+
     // Add date filter with exact string matching
     if (date) {
       // Ensure date is in DD-MM-YYYY format
       if (!/^\d{2}-\d{2}-\d{4}$/.test(date)) {
-        return res.status(400).json({ 
-          message: 'Invalid date format. Use DD-MM-YYYY' 
+        return res.status(400).json({
+          message: 'Invalid date format. Use DD-MM-YYYY'
         });
       }
       query.date = date;
       console.log('Filtering by exact date:', date);
     }
 
-    // Cache-aside: key only after date validation succeeds
-    const cacheKey = date
-      ? `articles:list:date:${date}`
-      : 'articles:list:all';
+    // Validate cursor before building the query
+    if (cursor !== undefined && cursor !== '') {
+      if (!mongoose.Types.ObjectId.isValid(cursor)) {
+        return res.status(400).json({ message: 'Invalid cursor format' });
+      }
+      query._id = { $lt: cursor };
+    }
+
+    // Parse limit: default 10, clamp to max 50
+    const parsedLimit = parseInt(req.query.limit, 10);
+    const limit = Number.isInteger(parsedLimit) && parsedLimit > 0
+      ? Math.min(parsedLimit, 50)
+      : 10;
+
+    // Page caching means invalidation (Prompt 4) will only target the
+    // first-page key per date scope, not every possible cursor/limit
+    // combination — documented known limitation, consistent with the
+    // existing precedent from Feature 1's list-cache invalidation.
+    const cacheKey = `articles:list:page:${date || 'all'}:${cursor || 'first'}:${limit}`;
 
     const cached = await getCache(cacheKey);
     if (cached !== null) {
@@ -64,16 +78,23 @@ router.get('/', async (req, res) => {
 
     console.log('Final MongoDB query:', JSON.stringify(query, null, 2));
 
-    const articles = await Article.find(query)
-      .sort({ createdAt: -1 });
+    const fetched = await Article.find(query)
+      .sort({ _id: -1 })
+      .limit(limit + 1);
 
-    // Transform the response to match frontend expectations
-    const transformedArticles = articles.map(toArticleDTO);
+    const hasMore = fetched.length > limit;
+    const page = hasMore ? fetched.slice(0, limit) : fetched;
+    const nextCursor = hasMore
+      ? String(page[page.length - 1]._id)
+      : null;
 
-    await setCache(cacheKey, transformedArticles, 300);
+    const articles = page.map(toArticleDTO);
+    const payload = { articles, nextCursor, hasMore };
 
-    console.log('Sending transformed articles:', transformedArticles.length);
-    res.json(transformedArticles);
+    await setCache(cacheKey, payload, 300);
+
+    console.log('Sending paginated articles:', articles.length, { hasMore, nextCursor });
+    res.json(payload);
   } catch (error) {
     console.error('Error fetching articles:', error);
     res.status(500).json({ message: 'Error fetching articles', error: error.message });
@@ -201,11 +222,13 @@ router.post('/', [
     };
 
     // Invalidate list caches after successful write.
-    // Known limitation: only articles:list:all and the directly-affected
-    // date key are cleared — not all possible date-scoped list keys.
+    // Known limitation: only the first-page keys for all + the
+    // directly-affected date are cleared, and only for limit=10
+    // (the default/most-common value). Deeper pages and non-default
+    // limits will serve stale data until TTL expiry (5 min) after a write.
     await deleteCache([
-      'articles:list:all',
-      `articles:list:date:${savedArticle.date}`,
+      'articles:list:page:all:first:10',
+      `articles:list:page:${savedArticle.date}:first:10`,
     ]);
 
     res.status(201).json(transformedArticle);
@@ -278,11 +301,13 @@ router.delete('/:id', verifyToken, async (req, res) => {
     }
 
     // Invalidate list + single-article caches after successful delete.
-    // Known limitation: only articles:list:all and the directly-affected
-    // date key are cleared — not all possible date-scoped list keys.
+    // Known limitation: only the first-page keys for all + the
+    // directly-affected date are cleared, and only for limit=10
+    // (the default/most-common value). Deeper pages and non-default
+    // limits will serve stale data until TTL expiry (5 min) after a write.
     await deleteCache([
-      'articles:list:all',
-      `articles:list:date:${article.date}`,
+      'articles:list:page:all:first:10',
+      `articles:list:page:${article.date}:first:10`,
       `article:id:${req.params.id}`,
     ]);
 
@@ -358,12 +383,14 @@ router.post(
     };
 
     // Invalidate single-article + list caches after successful vote write.
-    // Known limitation: only articles:list:all and the directly-affected
-    // date key are cleared — not all possible date-scoped list keys.
+    // Known limitation: only the first-page keys for all + the
+    // directly-affected date are cleared, and only for limit=10
+    // (the default/most-common value). Deeper pages and non-default
+    // limits will serve stale data until TTL expiry (5 min) after a write.
     await deleteCache([
       `article:id:${req.params.id}`,
-      'articles:list:all',
-      `articles:list:date:${article.date}`,
+      'articles:list:page:all:first:10',
+      `articles:list:page:${article.date}:first:10`,
     ]);
 
     res.json(transformedArticle);
@@ -423,12 +450,14 @@ router.post(
     };
 
     // Invalidate single-article + list caches after successful comment write.
-    // Known limitation: only articles:list:all and the directly-affected
-    // date key are cleared — not all possible date-scoped list keys.
+    // Known limitation: only the first-page keys for all + the
+    // directly-affected date are cleared, and only for limit=10
+    // (the default/most-common value). Deeper pages and non-default
+    // limits will serve stale data until TTL expiry (5 min) after a write.
     await deleteCache([
       `article:id:${req.params.id}`,
-      'articles:list:all',
-      `articles:list:date:${article.date}`,
+      'articles:list:page:all:first:10',
+      `articles:list:page:${article.date}:first:10`,
     ]);
 
     res.json(transformedArticle);

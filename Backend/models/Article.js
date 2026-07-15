@@ -98,6 +98,7 @@ const articleSchema = new mongoose.Schema({
 articleSchema.index({ region: 1 });
 articleSchema.index({ date: 1 });
 articleSchema.index({ publisher: 1 });
+articleSchema.index({ date: 1, _id: -1 });
 
 // Virtual for formatted date
 articleSchema.virtual('formattedDate').get(function() {

@@ -13,7 +13,10 @@ const Home = () => {
     setSelectedDate,
     selectedRegion,
     setSelectedRegion,
-    popular
+    popular,
+    hasMore,
+    isLoadingMore,
+    loadMoreArticles,
   } = useContext(articleContext);
 
   // Function to check if the date string matches the selected date
@@ -118,6 +121,21 @@ const Home = () => {
               </div>
             );
           })()}
+
+          {hasMore && (
+            <div className="flex justify-center mt-8">
+              <button
+                type="button"
+                onClick={loadMoreArticles}
+                disabled={isLoadingMore}
+                className={`px-4 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors duration-200 ${
+                  isLoadingMore ? "opacity-70 cursor-not-allowed" : ""
+                }`}
+              >
+                {isLoadingMore ? "Loading..." : "Load More"}
+              </button>
+            </div>
+          )}
         </section>
       </div>
     </div>
