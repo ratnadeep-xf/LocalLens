@@ -1,5 +1,6 @@
 // API base URL from environment variable
 const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+export const API_ROOT_URL = apiUrl;
 export const API_BASE_URL = `${apiUrl}/api`;
 
 // Default fetch options for all API calls
@@ -70,8 +71,16 @@ export const AUTH_ENDPOINTS = {
 // Article endpoints
 export const ARTICLE_ENDPOINTS = {
   getAll: `${API_BASE_URL}/articles`,
+  getById: (id) => `${API_BASE_URL}/articles/${id}`,
   create: `${API_BASE_URL}/articles`,
   delete: (id) => `${API_BASE_URL}/articles/${id}`,
   vote: (id) => `${API_BASE_URL}/articles/${id}/vote`,
   comment: (id) => `${API_BASE_URL}/articles/${id}/comment`,
+  search: (query, region) => {
+    const params = new URLSearchParams({
+      q: query,
+      ...(region && region !== 'all' ? { region } : {}),
+    });
+    return `${API_BASE_URL}/articles/search?${params.toString()}`;
+  },
 }; 

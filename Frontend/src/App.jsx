@@ -7,6 +7,7 @@ import PublisherLogin from "./pages/PublisherLogin";
 import AddArticle from "./pages/AddArticle";
 import Dashboard from "./pages/Dashboard";
 import ArticlePage from "./pages/ArticlePage";
+import SearchResults from "./pages/SearchResults";
 import { ArticleProvider } from "./context/articleContext";
 import DeleteModal from "./components/DeleteModal";
 import Footer from "./components/Footer";
@@ -24,6 +25,7 @@ function App() {
               <Route path="/add-article" element={<AddArticle />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/article/:id" element={<ArticlePage />} />
+              <Route path="/search" element={<SearchResults />} />
               <Route path="/delete-article" element={<DeleteModal />} />
               <Route path="*" element={<h1>Page Not Found</h1>} />
             </Routes>

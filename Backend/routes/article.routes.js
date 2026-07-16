@@ -393,6 +393,12 @@ router.post(
       `articles:list:page:${article.date}:first:10`,
     ]);
 
+    const id = req.params.id;
+    req.app.io.to(`room:${id}`).emit('upvote:' + id, {
+      upVotes: article.engagement.upVotes,
+      downVotes: article.engagement.downVotes,
+    });
+
     res.json(transformedArticle);
   } catch (error) {
     console.error('Error updating vote:', error);
@@ -428,12 +434,13 @@ router.post(
     }
 
     // Add new comment
-    article.engagement.commentsArray.push({
+    const newComment = {
       userId: req.user._id,
       userName: req.user.name,
       content,
       createdAt: new Date()
-    });
+    };
+    article.engagement.commentsArray.push(newComment);
 
     await article.save();
 
@@ -460,10 +467,70 @@ router.post(
       `articles:list:page:${article.date}:first:10`,
     ]);
 
+    const id = req.params.id;
+    req.app.io.to(`room:${id}`).emit('comment:' + id, newComment);
+
     res.json(transformedArticle);
   } catch (error) {
     console.error('Error adding comment:', error);
     res.status(500).json({ message: 'Error adding comment', error: error.message });
+  }
+});
+
+// Full-text search via Atlas Search ($search). Must be registered before
+// GET /:id so "search" is not treated as an article id.
+router.get('/search', async (req, res) => {
+  try {
+    const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    if (!q) {
+      return res.status(400).json({
+        message: 'Search query parameter "q" is required and cannot be empty',
+      });
+    }
+
+    const region =
+      typeof req.query.region === 'string' ? req.query.region.trim() : '';
+
+    const pipeline = [
+      {
+        $search: {
+          index: 'articles_search',
+          compound: {
+            must: [
+              {
+                text: {
+                  query: q,
+                  path: ['title', 'content', 'region', 'publisherName'],
+                },
+              },
+            ],
+            filter: region
+              ? [
+                  {
+                    text: {
+                      query: region,
+                      path: 'region',
+                    },
+                  },
+                ]
+              : [],
+          },
+        },
+      },
+      { $limit: 20 },
+      // Aggregate returns plain objects (no Mongoose virtuals); mirror
+      // formattedDate so toArticleDTO.date matches GET / and GET /:id.
+      { $addFields: { formattedDate: '$date' } },
+    ];
+
+    const results = await Article.aggregate(pipeline);
+    res.json(results.map(toArticleDTO));
+  } catch (error) {
+    console.error('Error searching articles:', error);
+    res.status(500).json({
+      message: 'Error searching articles',
+      error: error.message,
+    });
   }
 });
 

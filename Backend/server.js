@@ -4,9 +4,11 @@ dotenv.config();
 
 const express = require("express");
 const cookieParser = require("cookie-parser");
+const http = require("node:http");
+const { Server } = require("socket.io");
 const connectDB = require("./config/db");
-const path = require("path");
-const fs = require("fs");
+const path = require("node:path");
+const fs = require("node:fs");
 const cors = require("cors");
 
 // Verify environment variables
@@ -84,7 +86,7 @@ const allowedOrigins = [
   "https://local-lens-skvi-git-main-xfactor1289-4763s-projects.vercel.app",
 ].filter(Boolean);
 
-app.use(cors({
+const corsOptions = {
   origin: (origin, callback) => {
     console.log('Request origin:', origin);
     
@@ -94,10 +96,10 @@ app.use(cors({
       return callback(null, true);
     }
 
-    if (allowedOrigins.indexOf(origin) === -1) {
+    if (!allowedOrigins.includes(origin)) {
       console.log('Blocked origin:', origin);
       console.log('Allowed origins:', allowedOrigins);
-      var msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
       return callback(new Error(msg), false);
     }
 
@@ -109,7 +111,9 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
   exposedHeaders: ['Content-Range', 'X-Content-Range'],
   maxAge: 600 // Cache preflight request for 10 minutes
-}));
+};
+
+app.use(cors(corsOptions));
 
 // Add OPTIONS handling for all routes
 app.options('*', cors());
@@ -198,11 +202,36 @@ app.use((req, res) => {
 
 const PORT = process.env.PORT || 5000;
 let server;
+const httpServer = http.createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: allowedOrigins,
+    credentials: true,
+    methods: corsOptions.methods,
+    allowedHeaders: corsOptions.allowedHeaders,
+  },
+});
+
+io.on("connection", (socket) => {
+  console.log("Socket connected:", socket.id);
+
+  socket.on("join:article", (articleId) => {
+    socket.join(`room:${articleId}`);
+  });
+
+  socket.on("leave:article", (articleId) => {
+    socket.leave(`room:${articleId}`);
+  });
+
+  socket.on("disconnect", (reason) => {
+    console.log("Socket disconnected:", socket.id, reason);
+  });
+});
 
 // Start server
 const startServer = async () => {
   try {
-    server = app.listen(PORT, () => {
+    server = httpServer.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
       console.log("Environment variables loaded:");
       console.log("- MONGODB_URI is set:", !!process.env.MONGODB_URI);
@@ -261,3 +290,4 @@ startServer();
 
 // Export for Vercel
 module.exports = app;
+app.io = io;

@@ -3,6 +3,7 @@ import { ArrowUp, ArrowDown, MessageCircle, User, Send } from "lucide-react";
 import { format } from "date-fns";
 import { articleContext } from "../context/articleContext";
 import { ARTICLE_ENDPOINTS, apiCall } from "../utils/api";
+import socket from "../utils/socket";
 
 const Engagement = ({ article }) => {
   const { 
@@ -37,6 +38,68 @@ const Engagement = ({ article }) => {
       }
     }
   }, [latestArticle.engagement.votesArray, loggedUserId]);
+
+  useEffect(() => {
+    const upvoteEvent = `upvote:${article.id}`;
+    const commentEvent = `comment:${article.id}`;
+
+    const handleUpvote = ({ upVotes, downVotes }) => {
+      setArticles((prevArticles) =>
+        prevArticles.map((currentArticle) =>
+          currentArticle.id === article.id
+            ? {
+                ...currentArticle,
+                engagement: {
+                  ...currentArticle.engagement,
+                  upVotes,
+                  downVotes,
+                },
+              }
+            : currentArticle
+        )
+      );
+    };
+
+    const handleComment = (incomingComment) => {
+      setArticles((prevArticles) =>
+        prevArticles.map((currentArticle) => {
+          if (currentArticle.id !== article.id) {
+            return currentArticle;
+          }
+
+          const hasComment = currentArticle.engagement.commentsArray.some(
+            (comment) =>
+              comment.createdAt === incomingComment.createdAt &&
+              comment.userId === incomingComment.userId &&
+              comment.content === incomingComment.content
+          );
+
+          if (hasComment) {
+            return currentArticle;
+          }
+
+          return {
+            ...currentArticle,
+            engagement: {
+              ...currentArticle.engagement,
+              commentsArray: [
+                ...currentArticle.engagement.commentsArray,
+                incomingComment,
+              ],
+            },
+          };
+        })
+      );
+    };
+
+    socket.on(upvoteEvent, handleUpvote);
+    socket.on(commentEvent, handleComment);
+
+    return () => {
+      socket.off(upvoteEvent, handleUpvote);
+      socket.off(commentEvent, handleComment);
+    };
+  }, [article.id, setArticles]);
 
   const handleVote = async (value) => {
     try {
