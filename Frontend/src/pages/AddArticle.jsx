@@ -1,16 +1,33 @@
-import React, { useContext, useState, useEffect } from "react";
+import React, { useContext, useState, useEffect, useRef } from "react";
 import Navbar from "../components/Navbar";
 import Select from "react-select";
 import { useForm, Controller, useWatch } from "react-hook-form";
+import { useDispatch, useSelector } from "react-redux";
 import { articleContext } from "../context/articleContext";
 import { useNavigate } from "react-router-dom";
 import { FileText, Image, MapPin, Save } from "lucide-react";
 import { ARTICLE_ENDPOINTS, apiCall } from "../utils/api";
+import { updateDraftField, clearDraft } from "../store/draftSlice";
+
+const draftHasContent = (draft) =>
+  Boolean(draft.title?.trim()) ||
+  Boolean(draft.content?.trim()) ||
+  Boolean(draft.newRegion?.trim()) ||
+  (draft.regionOfArticle &&
+    typeof draft.regionOfArticle === "object" &&
+    draft.regionOfArticle.value) ||
+  (typeof draft.regionOfArticle === "string" && draft.regionOfArticle.trim());
 
 const AddArticle = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const draft = useSelector((state) => state.draft);
   const [submitError, setSubmitError] = useState(null);
-  const [isSubmitting, setisSubmitting] = useState(false)
+  const [isSubmitting, setisSubmitting] = useState(false);
+  const [draftRestored, setDraftRestored] = useState(false);
+  const debounceRef = useRef(null);
+  const skipDebounceRef = useRef(true);
+  const hasRestoredRef = useRef(false);
 
   const {
     articles,
@@ -31,15 +48,91 @@ const AddArticle = () => {
     handleSubmit,
     watch,
     control,
+    setValue,
     formState: { errors },
   } = useForm();
-
-
 
   const selectedRegions = useWatch({
     control,
     name: "regionOfArticle",
   });
+
+  const watchedTitle = useWatch({ control, name: "title" });
+  const watchedContent = useWatch({ control, name: "content" });
+  const watchedNewRegion = useWatch({ control, name: "newRegion" });
+
+  useEffect(() => {
+    if (hasRestoredRef.current) {
+      return;
+    }
+    hasRestoredRef.current = true;
+
+    if (draftHasContent(draft)) {
+      if (draft.title) {
+        setValue("title", draft.title);
+      }
+      if (draft.content) {
+        setValue("content", draft.content);
+      }
+      if (
+        draft.regionOfArticle &&
+        typeof draft.regionOfArticle === "object" &&
+        draft.regionOfArticle.value
+      ) {
+        setValue("regionOfArticle", draft.regionOfArticle);
+      }
+      if (draft.newRegion) {
+        setValue("newRegion", draft.newRegion);
+      }
+      setDraftRestored(true);
+    }
+
+    const enableSaveTimer = setTimeout(() => {
+      skipDebounceRef.current = false;
+    }, 100);
+
+    return () => clearTimeout(enableSaveTimer);
+    // Restore once on mount; PersistGate ensures draft is rehydrated first.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (skipDebounceRef.current) {
+      return;
+    }
+
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    debounceRef.current = setTimeout(() => {
+      dispatch(updateDraftField({ field: "title", value: watchedTitle ?? "" }));
+      dispatch(
+        updateDraftField({ field: "content", value: watchedContent ?? "" })
+      );
+      dispatch(
+        updateDraftField({
+          field: "regionOfArticle",
+          value: selectedRegions || "",
+        })
+      );
+      dispatch(
+        updateDraftField({ field: "newRegion", value: watchedNewRegion ?? "" })
+      );
+    }, 2000);
+
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [
+    watchedTitle,
+    watchedContent,
+    selectedRegions,
+    watchedNewRegion,
+    dispatch,
+  ]);
 
   const onSubmit = async (data) => {
     try {
@@ -131,6 +224,8 @@ const AddArticle = () => {
       // Refresh the articles list after successful creation
       await fetchArticles();
 
+      dispatch(clearDraft());
+
       navigate("/dashboard");
     } catch (error) {
       console.error('Error creating article:', error);
@@ -179,6 +274,14 @@ const AddArticle = () => {
           {submitError && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-red-600">{submitError}</p>
+            </div>
+          )}
+
+          {draftRestored && (
+            <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-amber-800 text-sm">
+                Draft restored — please re-attach your image if needed.
+              </p>
             </div>
           )}
 
