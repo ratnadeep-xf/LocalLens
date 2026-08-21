@@ -7,6 +7,7 @@ const cookieParser = require("cookie-parser");
 const http = require("node:http");
 const { Server } = require("socket.io");
 const connectDB = require("./config/db");
+const ensureDb = require("./middleware/db.middleware");
 const path = require("node:path");
 const fs = require("node:fs");
 const cors = require("cors");
@@ -61,13 +62,8 @@ const app = express();
 // Trust first proxy (Render / Vercel) so req.ip reflects the real client IP
 app.set("trust proxy", 1);
 
-// Connect to MongoDB
-connectDB().catch((err) => {
-  console.error("Failed to connect to MongoDB:", err);
-  if (!isVercel) {
-    process.exit(1);
-  }
-});
+// On long-running hosts, connect at boot. On Vercel, connect per request
+// via ensureDb so queries never run while Mongoose is still buffering.
 
 // Create temp directory only in development environment
 if (process.env.NODE_ENV === "development") {
@@ -183,7 +179,7 @@ if (process.env.NODE_ENV === "development") {
 }
 
 // Mount all routes under /api
-app.use("/api", routes);
+app.use("/api", ensureDb, routes);
 
 // Basic route for testing
 app.get("/", (req, res) => {
@@ -312,6 +308,7 @@ app.io = io;
 // Start server
 const startServer = async () => {
   try {
+    await connectDB();
     server = httpServer.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
       console.log("Environment variables loaded:");
