@@ -156,14 +156,21 @@ const applyCorsHeaders = (req, res) => {
 };
 
 app.use((req, res, next) => {
-  applyCorsHeaders(req, res);
+  // On Vercel, CORS is applied in vercel.json so platform timeouts/413s
+  // still include Access-Control-Allow-Origin. Express must not set it
+  // again or browsers reject the duplicated header.
+  if (!isVercel) {
+    applyCorsHeaders(req, res);
+  }
   if (req.method === "OPTIONS") {
     return res.status(204).end();
   }
   next();
 });
 
-app.use(cors(corsOptions));
+if (!isVercel) {
+  app.use(cors(corsOptions));
+}
 
 // Middleware
 app.use(express.json());
@@ -185,7 +192,9 @@ app.get("/", (req, res) => {
 
 // Enhanced error handling middleware
 app.use((err, req, res, next) => {
-  applyCorsHeaders(req, res);
+  if (!isVercel) {
+    applyCorsHeaders(req, res);
+  }
 
   // Log the full error details
   console.error("Error details:", {
@@ -198,6 +207,18 @@ app.use((err, req, res, next) => {
     params: req.params,
     headers: req.headers,
   });
+
+  if (err.name === "MulterError") {
+    const message =
+      err.code === "LIMIT_FILE_SIZE"
+        ? "Image must be smaller than 4MB"
+        : "File upload error";
+    return res.status(400).json({
+      message,
+      error: err.message,
+      type: "MulterError",
+    });
+  }
 
   // Send appropriate error response
   if (err.name === "ValidationError") {
@@ -237,7 +258,9 @@ app.use((err, req, res, next) => {
 
 // Enhanced 404 handler
 app.use((req, res) => {
-  applyCorsHeaders(req, res);
+  if (!isVercel) {
+    applyCorsHeaders(req, res);
+  }
 
   console.log("404 Not Found:", {
     path: req.path,

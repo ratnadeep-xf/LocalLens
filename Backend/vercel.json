@@ -3,18 +3,36 @@
   "builds": [
     {
       "src": "server.js",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "maxDuration": 30
+      }
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
       "methods": ["OPTIONS"],
-      "dest": "server.js"
+      "status": 204,
+      "headers": {
+        "Access-Control-Allow-Origin": "https://local-lens-skvi.vercel.app",
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Methods": "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
+        "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Requested-With, Accept, X-CSRF-Token, Accept-Version, Content-Length, Content-MD5, Date, X-Api-Version",
+        "Access-Control-Max-Age": "86400",
+        "Vary": "Origin"
+      }
     },
     {
-      "src": "/api/(.*)",
-      "dest": "server.js"
+      "src": "/(.*)",
+      "headers": {
+        "Access-Control-Allow-Origin": "https://local-lens-skvi.vercel.app",
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Methods": "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
+        "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Requested-With, Accept, X-CSRF-Token, Accept-Version, Content-Length, Content-MD5, Date, X-Api-Version",
+        "Vary": "Origin"
+      },
+      "continue": true
     },
     {
       "src": "/(.*)",
@@ -27,4 +45,4 @@
   "git": {
     "deploymentEnabled": false
   }
-} 
+}

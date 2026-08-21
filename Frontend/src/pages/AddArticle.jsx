@@ -177,7 +177,12 @@ const AddArticle = () => {
       
       // Append image if provided
       if (data.image && data.image[0]) {
-        formData.append('image', data.image[0]);
+        const imageFile = data.image[0];
+        const maxBytes = 3.5 * 1024 * 1024;
+        if (imageFile.size > maxBytes) {
+          throw new Error('Image must be smaller than 3.5MB');
+        }
+        formData.append('image', imageFile);
       }
 
       // Send request without Content-Type header (browser will set it automatically with boundary)
@@ -416,7 +421,7 @@ const AddArticle = () => {
                 {...register("image", { required: false })}
               />
               <p className="text-neutral-500 text-sm mt-1">
-                Upload an image to make your article more engaging
+                Optional. JPEG, PNG, or GIF under 3.5MB.
               </p>
             </div>
 

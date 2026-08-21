@@ -18,6 +18,11 @@ const storage = multer.diskStorage({
   
 const upload = multer({ 
   storage: storage,
+  limits: {
+    // Stay under Vercel's ~4.5MB request body limit so the platform
+    // does not reject the upload before CORS headers are applied.
+    fileSize: 4 * 1024 * 1024,
+  },
   fileFilter: function (req, file, cb) {
     // Accept images only
     if (!file.originalname.match(/\.(jpg|JPG|jpeg|JPEG|png|PNG|gif|GIF)$/)) {

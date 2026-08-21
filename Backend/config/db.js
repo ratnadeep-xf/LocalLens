@@ -8,13 +8,14 @@ const connectDB = async () => {
       : 'undefined';
     console.log('Attempting MongoDB connection with URI:', redactedUri);
 
-    // Connection options
+    // Serverless (Vercel) cannot hold large persistent pools.
+    const isServerless = Boolean(process.env.VERCEL);
     const options = {
       serverSelectionTimeoutMS: 15000,
       socketTimeoutMS: 45000,
       connectTimeoutMS: 15000,
-      maxPoolSize: 50,
-      minPoolSize: 10
+      maxPoolSize: isServerless ? 5 : 50,
+      minPoolSize: isServerless ? 0 : 10,
     };
 
     await mongoose.connect(process.env.MONGODB_URI, options);
@@ -57,7 +58,11 @@ const connectDB = async () => {
       console.error('3. Database user has correct permissions');
     }
 
-    process.exit(1);
+    if (!process.env.VERCEL) {
+      process.exit(1);
+    }
+
+    throw error;
   }
 };
 
