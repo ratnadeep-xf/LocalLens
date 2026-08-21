@@ -11,15 +11,24 @@ const path = require("node:path");
 const fs = require("node:fs");
 const cors = require("cors");
 
+const isVercel = Boolean(process.env.VERCEL);
+
+const failFast = (message) => {
+  console.error(message);
+  // process.exit in a Vercel serverless function kills the instance so even
+  // OPTIONS preflight returns 500 with no CORS headers.
+  if (!isVercel) {
+    process.exit(1);
+  }
+};
+
 // Verify environment variables
 if (!process.env.MONGODB_URI) {
-  console.error("MONGODB_URI is not defined in environment variables");
-  process.exit(1);
+  failFast("MONGODB_URI is not defined in environment variables");
 }
 
 if (!process.env.JWT_SECRET) {
-  console.error("JWT_SECRET is not defined in environment variables");
-  process.exit(1);
+  failFast("JWT_SECRET is not defined in environment variables");
 }
 
 // Verify Cloudinary environment variables
@@ -28,24 +37,18 @@ if (
   !process.env.CLOUDINARY_API_KEY ||
   !process.env.CLOUDINARY_API_SECRET
 ) {
-  console.error(
+  failFast(
     "Cloudinary credentials are not properly configured in environment variables"
   );
-  console.error(
-    "Please ensure CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET are set"
-  );
-  process.exit(1);
 }
 
 // Verify Upstash Redis environment variables
 if (!process.env.UPSTASH_REDIS_REST_URL) {
-  console.error("UPSTASH_REDIS_REST_URL is not defined in environment variables");
-  process.exit(1);
+  failFast("UPSTASH_REDIS_REST_URL is not defined in environment variables");
 }
 
 if (!process.env.UPSTASH_REDIS_REST_TOKEN) {
-  console.error("UPSTASH_REDIS_REST_TOKEN is not defined in environment variables");
-  process.exit(1);
+  failFast("UPSTASH_REDIS_REST_TOKEN is not defined in environment variables");
 }
 
 // Load routes only after env is validated — avoids Upstash client
@@ -55,17 +58,19 @@ const routes = require("./routes");
 // Initialize express
 const app = express();
 
-// Trust first proxy (Render) so req.ip reflects the real client IP
+// Trust first proxy (Render / Vercel) so req.ip reflects the real client IP
 app.set("trust proxy", 1);
 
 // Connect to MongoDB
 connectDB().catch((err) => {
   console.error("Failed to connect to MongoDB:", err);
-  process.exit(1);
+  if (!isVercel) {
+    process.exit(1);
+  }
 });
 
 // Create temp directory only in development environment
-if (process.env.NODE_ENV === 'development') {
+if (process.env.NODE_ENV === "development") {
   const tempDir = path.join(__dirname, "public", "temp");
   if (!fs.existsSync(tempDir)) {
     try {
@@ -80,43 +85,85 @@ if (process.env.NODE_ENV === 'development') {
 // CORS configuration
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://localhost:3000",
   "https://local-lens-skvi.vercel.app",
-  process.env.FRONTEND_URL,
+  process.env.FRONTEND_URL?.replace(/\/$/, ""),
   "https://local-lens-skvi-iqlabwnaq-xfactor1289-4763s-projects.vercel.app",
   "https://local-lens-skvi-git-main-xfactor1289-4763s-projects.vercel.app",
 ].filter(Boolean);
 
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true;
+  if (allowedOrigins.includes(origin)) return true;
+
+  try {
+    const { hostname, protocol } = new URL(origin);
+    if (protocol !== "https:") return false;
+    if (hostname === "local-lens-skvi.vercel.app") return true;
+    if (
+      hostname.startsWith("local-lens-skvi-") &&
+      hostname.endsWith(".vercel.app")
+    ) {
+      return true;
+    }
+  } catch {
+    return false;
+  }
+
+  return false;
+};
+
 const corsOptions = {
   origin: (origin, callback) => {
-    console.log('Request origin:', origin);
-    
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) {
-      console.log('Allowing request with no origin');
+    // Never pass an Error here: it becomes a 500 with no CORS headers,
+    // which the browser reports as a CORS failure instead of the real cause.
+    if (isAllowedOrigin(origin)) {
       return callback(null, true);
     }
 
-    if (!allowedOrigins.includes(origin)) {
-      console.log('Blocked origin:', origin);
-      console.log('Allowed origins:', allowedOrigins);
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
-    }
-
-    console.log('Allowing origin:', origin);
-    return callback(null, true);
+    console.log("Blocked origin:", origin);
+    console.log("Allowed origins:", allowedOrigins);
+    return callback(null, false);
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
-  exposedHeaders: ['Content-Range', 'X-Content-Range'],
-  maxAge: 600 // Cache preflight request for 10 minutes
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "X-Requested-With",
+    "Accept",
+  ],
+  exposedHeaders: ["Content-Range", "X-Content-Range"],
+  maxAge: 86400,
 };
 
-app.use(cors(corsOptions));
+const applyCorsHeaders = (req, res) => {
+  const origin = req.headers.origin;
+  if (origin && isAllowedOrigin(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader(
+      "Access-Control-Allow-Methods",
+      corsOptions.methods.join(",")
+    );
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      corsOptions.allowedHeaders.join(",")
+    );
+    res.setHeader("Access-Control-Max-Age", String(corsOptions.maxAge));
+    res.setHeader("Vary", "Origin");
+  }
+};
 
-// Add OPTIONS handling for all routes
-app.options('*', cors());
+app.use((req, res, next) => {
+  applyCorsHeaders(req, res);
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+  next();
+});
+
+app.use(cors(corsOptions));
 
 // Middleware
 app.use(express.json());
@@ -124,7 +171,7 @@ app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 
 // Serve static files only in development
-if (process.env.NODE_ENV === 'development') {
+if (process.env.NODE_ENV === "development") {
   app.use("/public", express.static(path.join(__dirname, "public")));
 }
 
@@ -138,8 +185,10 @@ app.get("/", (req, res) => {
 
 // Enhanced error handling middleware
 app.use((err, req, res, next) => {
+  applyCorsHeaders(req, res);
+
   // Log the full error details
-  console.error('Error details:', {
+  console.error("Error details:", {
     message: err.message,
     stack: err.stack,
     path: req.path,
@@ -151,52 +200,57 @@ app.use((err, req, res, next) => {
   });
 
   // Send appropriate error response
-  if (err.name === 'ValidationError') {
+  if (err.name === "ValidationError") {
     return res.status(400).json({
-      message: 'Validation error',
-      errors: Object.values(err.errors).map(e => e.message),
-      type: 'ValidationError'
+      message: "Validation error",
+      errors: Object.values(err.errors).map((e) => e.message),
+      type: "ValidationError",
     });
   }
 
-  if (err.name === 'MongoError' || err.name === 'MongoServerError') {
+  if (err.name === "MongoError" || err.name === "MongoServerError") {
     return res.status(500).json({
-      message: 'Database error',
+      message: "Database error",
       error: err.message,
-      type: 'DatabaseError'
+      type: "DatabaseError",
     });
   }
 
-  if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
+  if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") {
     return res.status(401).json({
-      message: 'Authentication error',
+      message: "Authentication error",
       error: err.message,
-      type: 'AuthError'
+      type: "AuthError",
     });
   }
 
   // Default error response
   res.status(500).json({
-    message: 'Internal server error',
-    error: process.env.NODE_ENV === 'development' ? err.message : 'An unexpected error occurred',
-    type: err.name || 'UnknownError'
+    message: "Internal server error",
+    error:
+      process.env.NODE_ENV === "development"
+        ? err.message
+        : "An unexpected error occurred",
+    type: err.name || "UnknownError",
   });
 });
 
 // Enhanced 404 handler
 app.use((req, res) => {
-  console.log('404 Not Found:', {
+  applyCorsHeaders(req, res);
+
+  console.log("404 Not Found:", {
     path: req.path,
     method: req.method,
     body: req.body,
     query: req.query,
     params: req.params,
   });
-  
-  res.status(404).json({ 
+
+  res.status(404).json({
     message: "Route not found",
     path: req.path,
-    method: req.method
+    method: req.method,
   });
 });
 
@@ -205,7 +259,9 @@ let server;
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      callback(null, isAllowedOrigin(origin));
+    },
     credentials: true,
     methods: corsOptions.methods,
     allowedHeaders: corsOptions.allowedHeaders,
@@ -227,6 +283,8 @@ io.on("connection", (socket) => {
     console.log("Socket disconnected:", socket.id, reason);
   });
 });
+
+app.io = io;
 
 // Start server
 const startServer = async () => {
@@ -254,7 +312,9 @@ const startServer = async () => {
     });
   } catch (error) {
     console.error("Failed to start server:", error);
-    process.exit(1);
+    if (!isVercel) {
+      process.exit(1);
+    }
   }
 };
 
@@ -270,24 +330,25 @@ const shutdown = async () => {
   }
 };
 
-// Handle shutdown signals
-process.on("SIGTERM", shutdown);
-process.on("SIGINT", shutdown);
+if (!isVercel) {
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
 
-// Handle uncaught errors
-process.on("uncaughtException", (error) => {
-  console.error("Uncaught Exception:", error);
-  shutdown();
-});
+  process.on("uncaughtException", (error) => {
+    console.error("Uncaught Exception:", error);
+    shutdown();
+  });
 
-process.on("unhandledRejection", (error) => {
-  console.error("Unhandled Rejection:", error);
-  shutdown();
-});
+  process.on("unhandledRejection", (error) => {
+    console.error("Unhandled Rejection:", error);
+    shutdown();
+  });
 
-// Start the server
-startServer();
+  startServer();
+} else {
+  console.log("Running on Vercel — skipping httpServer.listen()");
+  console.log("Allowed CORS origins:", allowedOrigins);
+}
 
 // Export for Vercel
 module.exports = app;
-app.io = io;
