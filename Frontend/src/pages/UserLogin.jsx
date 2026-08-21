@@ -43,12 +43,7 @@ const UserLogin = () => {
       setErrorMsg(''); // Clear any previous errors
       console.log("User Signup: Attempting registration", { email: data.email });
 
-      // Validate regions
-      if (!data.preferredRegions || data.preferredRegions.length === 0) {
-        throw new Error('Please select at least one region');
-      }
-
-      const selectedValues = data.preferredRegions.map((opt) => opt.value);
+      const selectedValues = (data.preferredRegions || []).map((opt) => opt.value);
       let regions = selectedValues;
 
       // Handle new region if "other" is selected
