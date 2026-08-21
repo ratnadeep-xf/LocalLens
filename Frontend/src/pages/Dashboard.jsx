@@ -1,6 +1,7 @@
 import React, { useState, useContext } from "react";
 import Navbar from "../components/Navbar";
 import { articleContext } from "../context/articleContext";
+import { parseDateDDMMYYYY } from "../utils/date";
 import Filters from "../components/Filters";
 import ArticleCard from "../components/ArticleCard";
 import { Link } from "react-router-dom";
@@ -35,9 +36,7 @@ const Dashboard = () => {
     )
       return false;
     // Filter by date (assuming article.date is a string in dd-mm-yyyy)
-    const articleDate = new Date(
-      article.date.split("-").reverse().join("-")
-    ).setHours(0, 0, 0, 0);
+    const articleDate = parseDateDDMMYYYY(article.date)?.setHours(0, 0, 0, 0);
     const selected = selectedDate
       ? new Date(selectedDate).setHours(0, 0, 0, 0)
       : null;

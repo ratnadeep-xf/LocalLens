@@ -7,6 +7,7 @@ import { articleContext } from "../context/articleContext";
 import { useNavigate } from "react-router-dom";
 import { FileText, Image, MapPin, Save } from "lucide-react";
 import { ARTICLE_ENDPOINTS, apiCall } from "../utils/api";
+import { formatDateDDMMYYYY } from "../utils/date";
 import { updateDraftField, clearDraft } from "../store/draftSlice";
 
 const draftHasContent = (draft) =>
@@ -174,6 +175,7 @@ const AddArticle = () => {
       formData.append('title', data.title.trim());
       formData.append('content', data.content.trim());
       formData.append('region', region);
+      formData.append('date', formatDateDDMMYYYY(new Date()));
       
       // Append image if provided
       if (data.image && data.image[0]) {

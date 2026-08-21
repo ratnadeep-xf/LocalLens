@@ -5,6 +5,7 @@ const { verifyToken } = require('../middleware/auth');
 const upload = require('../middleware/multer.middleware');
 const { uploadOnCloudinary } = require('../utils/cloudinary');
 const { getCache, setCache, deleteCache } = require('../utils/redis');
+const { toArticleDate } = require('../utils/date');
 const {
   voteLimiter,
   commentLimiter,
@@ -179,7 +180,7 @@ router.post('/', [
       content: content.trim(),
       region: region.trim(),
       imageUrl,
-      date: new Date().toISOString().split('T')[0].split('-').reverse().join('-'),
+      date: toArticleDate(req.body.date),
       publisher: req.publisher._id,
       publisherName: req.publisher.agencyName,
       engagement: {

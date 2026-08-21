@@ -1,6 +1,7 @@
 import { createContext, useState, useEffect } from "react";
 import { demoArticles, demoPublishers, demoUsers } from "./demoData";
 import { API_BASE_URL, AUTH_ENDPOINTS, ARTICLE_ENDPOINTS, apiCall } from "../utils/api";
+import { formatDateDDMMYYYY, isSameCalendarDate } from "../utils/date";
 
 export const articleContext = createContext();
 
@@ -54,11 +55,7 @@ export const ArticleProvider = ({ children }) => {
 
       // Add date parameter in DD-MM-YYYY format
       if (selectedDate) {
-        const day = String(selectedDate.getDate()).padStart(2, '0');
-        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
-        const year = selectedDate.getFullYear();
-        const formattedDate = `${day}-${month}-${year}`;
-        params.append('date', formattedDate);
+        params.append('date', formatDateDDMMYYYY(selectedDate));
       }
 
       if (cursor) {
@@ -220,21 +217,10 @@ export const ArticleProvider = ({ children }) => {
     checkAuth();
   }, [token]);
 
-  // Helper function for date comparison
-  const isSameDate = (dateStr, selectedDate) => {
-    const [day, month, year] = dateStr.split("-");
-    const d = new Date(`${year}-${month}-${day}`);
-    return (
-      d.getDate() === selectedDate.getDate() &&
-      d.getMonth() === selectedDate.getMonth() &&
-      d.getFullYear() === selectedDate.getFullYear()
-    );
-  };
-
   // Calculate popular articles
   useEffect(() => {
     const topThree = articles
-      .filter((article) => isSameDate(article.date, selectedDate))
+      .filter((article) => isSameCalendarDate(article.date, selectedDate))
       .filter((article) => {
         if (selectedRegion.includes("all")) return true;
         return selectedRegion.includes(article.region);
