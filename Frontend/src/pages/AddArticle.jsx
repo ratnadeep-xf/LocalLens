@@ -195,8 +195,15 @@ const AddArticle = () => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Error creating article');
+        const errorData = await response.json().catch(() => ({}));
+        if (response.status === 429) {
+          throw new Error(
+            errorData.message ||
+              errorData.error ||
+              "Too many articles created. Please wait and try again."
+          );
+        }
+        throw new Error(errorData.message || errorData.error || "Error creating article");
       }
 
       const result = await response.json();

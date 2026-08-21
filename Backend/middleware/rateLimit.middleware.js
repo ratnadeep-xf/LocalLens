@@ -21,8 +21,8 @@ const commentLimiter = new Ratelimit({
 
 const createLimiter = new Ratelimit({
   redis: redisClient,
-  limiter: Ratelimit.slidingWindow(20, "1 d"),
-  prefix: "ratelimit:create",
+  limiter: Ratelimit.slidingWindow(30, "1 h"),
+  prefix: "ratelimit:create:hourly",
 });
 
 /**
@@ -46,17 +46,13 @@ const rateLimitMiddleware = (limiter, getIdentifier) => {
       );
       res.set("Retry-After", String(retryAfterSeconds));
       return res.status(429).json({
+        message: "Too many requests. Please try again later.",
         error: "Too many requests. Please try again later.",
       });
     } catch (error) {
-      // Fail closed (unlike utils/redis.js cache helpers, which fail open):
-      // if Redis/rate-limit is unreachable, deny the request rather than
-      // allowing unlimited traffic through.
-      console.error("[rateLimit] limiter error:", error.message);
-      return res.status(429).json({
-        error:
-          "Rate limiting temporarily unavailable. Please try again shortly.",
-      });
+      // Fail open: a Redis/rate-limit outage should not block publishing.
+      console.error("[rateLimit] limiter error, allowing request:", error.message);
+      return next();
     }
   };
 };
